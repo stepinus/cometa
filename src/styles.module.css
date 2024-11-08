@@ -1,0 +1,84 @@
+* {
+  box-sizing: border-box;
+}
+
+
+
+#root {
+  overflow: auto;
+}
+
+body {
+  position: fixed;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir,
+    helvetica neue, helvetica, ubuntu, roboto, noto, segoe ui, arial, sans-serif;
+  color: black;
+  background: white;
+}
+/* App.css */
+
+.app {
+  font-family: Arial, sans-serif;
+  padding: 0;
+  background-color: black;
+  height: 100%;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 2px solid #ccc;
+  margin-bottom: 10px;
+}
+
+.tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+  transition: background-color 0.3s ease;
+}
+
+.tab:hover {
+  background-color: #f0f0f0;
+}
+
+.tab.active {
+  border-bottom: 2px solid #007bff;
+  font-weight: bold;
+}
+
+.tab-content {
+  padding: 0;
+  background-color: black;
+  height: 100%;
+}
+.controls_container {
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 20px;
+}
+
+.round {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+
+.round:active {
+  transform: scale(0.95);
+}
