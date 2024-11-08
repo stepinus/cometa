@@ -2,10 +2,10 @@
 FROM node:18 as build-stage
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN pnpm install
 COPY . .
 RUN rm -rf dist
-RUN npm run build
+RUN pnpm run build
 
 # Вывод содержимого папки dist в логи
 RUN echo "Current directory: $(pwd)" && ls -la dist/assets
