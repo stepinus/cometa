@@ -55,11 +55,7 @@ export default function ChatPage() {
        handleSubmit(text);
         // stopRecognition();
     },
-    ortConfig(ort) {
-      // ort.env.wasm.wasmPaths = "/";
-    },
-    // workletURL: "/vad.worklet.bundle.min.js", 
-    // modelURL: "/silero_vad.onnx",
+  
     positiveSpeechThreshold: 0.9,
     minSpeechFrames: 7,
   }) as VADState;

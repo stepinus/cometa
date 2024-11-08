@@ -1,6 +1,7 @@
 "use client";
 import { EdgeTTSClient, ProsodyOptions, OUTPUT_FORMAT } from 'edge-tts-client';
 import Scene from '../sphere/src/App'
+import { useStore } from './store'; // Импорт store
 
 import { useState,} from "react";
 import { useMicVAD, type ReactRealTimeVADOptions } from "@ricky0123/vad-react";
@@ -35,10 +36,12 @@ export default function ChatPage() {
   const [response, setResponse] = useState<string>("");
   const [chainOn, setChainOn] = useState<boolean>(false);
   const {processAudioData} = useAudioChunkProcessor({})
+
+  const updateVADData = useStore((state) => state.updateVADData); // Получаем функцию обновления данных VAD из store
   const vad = useMicVAD({
     startOnLoad: true,
-    onFrameProcessed(probabilities, frame) {
-        // return frame;
+    onFrameProcessed(probabilities, audioData) {
+      // updateVADData({ rawData: audioData, energy: probabilities[0] });
     },
     onSpeechStart: () => {
         if(isPending) return;
