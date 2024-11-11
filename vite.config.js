@@ -4,6 +4,15 @@ import glsl from "vite-plugin-glslify-inject"; // https://vitejs.dev/config/
 import {viteStaticCopy} from "vite-plugin-static-copy";
 export default defineConfig({
   base: "/",
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]'
+      }
+    }
+  },
   plugins: [
     react(),
     glsl({
