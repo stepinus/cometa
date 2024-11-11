@@ -20,6 +20,8 @@ interface StoreState {
   innerSegments: number;
   audioContext?: AudioContext;
   vadAudioData: VADAudioData | null;
+  status:boolean;
+  setStatus:any;
   
   setInnerSegments: (value: number) => void;
   updateVADData: (data: Partial<VADAudioData>) => void;
@@ -27,9 +29,14 @@ interface StoreState {
 }
 
 export const useStore = create<StoreState>((set) => ({
+  status: true,
   isInit: false,
   innerSegments: 130,
   vadAudioData: null,
+  isPending:false,
+  setStatus: (status: boolean) => set({ status }),
+ 
+
 
   setInnerSegments: (value) => set({ innerSegments: value }),
   

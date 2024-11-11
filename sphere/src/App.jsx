@@ -5,6 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import fragmentShader from "./fragment";
 import vertexShader from "./vertex";
 import { useControls } from "leva";
+import {useStore} from '../../src/store'
 
 function Scene() {
   const mesh = useRef();
@@ -53,13 +54,13 @@ function Scene() {
       }
     };
   }, []);
-
   useFrame((state) => {
+    const status = useStore.getState().status
     const { clock } = state;
     mesh.current.material.uniforms.u_time.value = clock.getElapsedTime();
     mesh.current.material.uniforms.u_speed.value = speed;
-    mesh.current.material.uniforms.u_intensity.value = intensity;
-    mesh.current.material.uniforms.u_partical_size.value = particalSize;
+    mesh.current.material.uniforms.u_intensity.value = status ? intensity : intensity*2;
+    mesh.current.material.uniforms.u_partical_size.value = status ? particalSize: particalSize*2 ;
     mesh.current.material.uniforms.u_color_a.value = new THREE.Color(colorA);
     mesh.current.material.uniforms.u_color_b.value = new THREE.Color(colorB);
   });

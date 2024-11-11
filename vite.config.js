@@ -33,11 +33,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api/recognition-audio/': {
-        target: 'https://generate.ai-akedemi-project.ru/',
-        changeOrigin: true,
-        secure: false, // Установите в true, если ваш сервер использует HTTPS и имеет действительный сертификат
-        rewrite: (path) => path.replace(/^\/api\/recognition-audio/, '/api/recognition-audio/')
+      '/api/v1': {
+        target: 'http://localhost:8000/api',
+        changeOrigin: true
       }
     }
   },

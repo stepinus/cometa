@@ -1,18 +1,19 @@
 "use client";
 import { EdgeTTSClient, ProsodyOptions, OUTPUT_FORMAT } from 'edge-tts-client';
 import Scene from '../sphere/src/App'
-import { useStore } from './store'; // Импорт store
 
-import { useState,} from "react";
+import { useState, useEffect} from "react";
 import { useMicVAD, type ReactRealTimeVADOptions } from "@ricky0123/vad-react";
-import validate from "./verifySubmit";
 import { createKaMetaAgent } from "./langchain";
 import { useAudioChunkProcessor } from './useAudioChunkProcessor';
 import useEdgeTTS from './useEdgeSpeech';
+import {useStore} from './store'
+import { useProphecyGenerator } from './useProphecy';
+import { useDeepgramTTS } from './useDeepgramTTS';
 
 const options = new ProsodyOptions();
 options.pitch = 'high';
-options.rate = 'fast';
+options.rate = 'medum';
 options.volume = 90;
 
 interface VADState {
@@ -27,59 +28,84 @@ interface VADState {
 const kaMetaAgent = createKaMetaAgent()
 
 export default function ChatPage() {
+  const setStatus = useStore((state) => state.setStatus);
+  const status = useStore((state) => state.status);
+
   const { synthesizeAndPlay, stop, isPlaying } = useEdgeTTS();
   const [text,setText]  = useState<string>("");
   const [isPending, setIsPending] = useState<boolean>(false);
   const [transcript, setTranscript] = useState<string>("");
   const [interimTranscript, setInterimTranscript] = useState<string>("");
-  const [status, setStatus] = useState<string>("idle");
   const [response, setResponse] = useState<string>("");
   const [chainOn, setChainOn] = useState<boolean>(false);
   const {processAudioData} = useAudioChunkProcessor({})
+  const {processUserInput} = useProphecyGenerator();
+  // const { playText, isPlaying:isDeepPlaying } = useDeepgramTTS();
 
-  const updateVADData = useStore((state) => state.updateVADData); // Получаем функцию обновления данных VAD из store
-  const vad = useMicVAD({
+  const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
+      // console.log(1)
       // updateVADData({ rawData: audioData, energy: probabilities[0] });
     },
     onSpeechStart: () => {
-        if(isPending) return;
-        console.log("onSpeechStart"); 
+        // if(isPending) return;
+
+        // console.log("onSpeechStart"); 
     },
     onVADMisfire: () => {
-        console.log("onVADMisfire");
+        // console.log("onVADMisfire");
     },
     onSpeechEnd: async (frame) => {
         if(isPending) return;
         setIsPending(true);
+        setStatus(false);
        const text =  await processAudioData(frame)
        handleSubmit(text);
 
     },
-    ortConfig(ort) {
-      ort.env.wasm.wasmPaths = "/";
-    },
-    workletURL: "/vad.worklet.bundle.min.js", 
-    modelURL: "/silero_vad.onnx",
-    positiveSpeechThreshold: 0.9,
-    minSpeechFrames: 7,
+
+    positiveSpeechThreshold: 0.7,
+    minSpeechFrames: 10,
   }) as VADState;
 
-  async function handleSubmit(text) {
+  async function handleSubmit(inputText:any) {
+    console.log(inputText)
     try {
-      const {text:response} = await kaMetaAgent.processUserInput(text.text);
+      console.log('submit')
+      const response = await processUserInput(inputText.text)
       await synthesizeAndPlay(response);
-      console.log('next')
+      setIsPending(false); // Очищаем поле ввода после submit
+      setStatus(true);
     } catch (e) {
       console.error(e);
     }
-    setIsPending(false);
   }
+
+  useEffect(()=>{
+  if(isPlaying){setIsPending(true)} else{
+    setIsPending(false)
+  }
+  },[isPlaying])
 
   return (
     <div className="min-h-screen mflex flex-col items-center justify-center " style={{height:'100%'}}>
-     <Scene />
+     <Scene /> 
+     <div className="mt-4 flex items-center">
+       <input 
+         type="text" 
+         value={text} 
+         onChange={(e) => setText(e.target.value)} 
+         placeholder="Введите текст" 
+         className="border p-2 mr-2"
+       />
+       <button 
+         onClick={() => handleSubmit(text)} 
+         className="bg-blue-500 text-white p-2 rounded"
+       >
+         Отправить
+       </button>
+     </div>
     </div>
   )
 }

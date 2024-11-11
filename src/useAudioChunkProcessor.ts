@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { convertAudioToWav, transcribeAudio, calculateAudioEnergy } from './audioUtils';
+import { convertAudioToWav, transcribeAudio } from './audioUtils';
 import { useStore } from './store';
 
 interface AudioProcessorOptions {
@@ -20,18 +20,6 @@ export const useAudioChunkProcessor = ({
     try {
       if (onPending) {
         onPending();
-      }
-
-      // VAD анализ
-      if (enableVADTracking) {
-        const energy = calculateAudioEnergy(audioData);
-        const isSpeaking = energy > 0.01; // Порог можно настроить
-
-        updateVADData({
-          rawData: audioData,
-          energy,
-          isSpeaking
-        });
       }
 
       const wav = convertAudioToWav(audioData, 16000);

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { convertAudioToWav, transcribeAudio } from './audioUtils';
+import { convertAudioToWav, transcribeAudio } from './src/audioUtils';
 import { set } from 'lodash';
 import { on } from 'events';
 

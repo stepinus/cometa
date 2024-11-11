@@ -83,11 +83,7 @@ const useEdgeTTS = () => {
     });
 
     stream.on('end', () => {
-      setTimeout(()=>{
-        if(isPlaying){
-          /// do something
-        }
-      },500)
+
       setIsPlaying(false);
     });
   }, [ttsClient]);

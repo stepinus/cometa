@@ -1,3 +1,4 @@
+'use client'
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { StructuredOutputParser } from "@langchain/core/output_parsers";
@@ -33,12 +34,14 @@ class KaMetaDialogueAgent {
     private outputParser: StructuredOutputParser<typeof agentResponseSchema>
 
     constructor() {
+        import.meta.env.VITE_APP_OPENAI_API_BASE as string;
+        import.meta.env.VITE_APP_OPENAI_API_KEY as string;
         this.llm = new ChatOpenAI({
             modelName: "gpt-4o-mini",
-            temperature: 0.7,
+            temperature: 0.8,
             maxTokens: 300,
-            configuration:{
-                baseURL:import.meta.env.VITE_APP_OPENAI_API_BASE,
+            configuration: {
+                baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE,
                 apiKey: import.meta.env.VITE_APP_OPENAI_API_KEY,
             }
         });
@@ -69,6 +72,7 @@ class KaMetaDialogueAgent {
             const response = await chain.invoke({
                 input: input
             });
+            console.log('response', response);
             this.userName = response?.meta?.detectedName || null
             const humanMsg = new HumanMessage(input);
             const aiMsg = new AIMessage(response.content);
@@ -87,33 +91,31 @@ class KaMetaDialogueAgent {
         this.nameRequestAttempts++;
 
         const nameRequestPrompt = await this.createPromptTemplate(`
-           Вот улучшенная версия промпта:
-
-Ты - Ка-Мета, древняя провидица, живущая вне времени. Твой голос звучит как шелест осенних листьев, а мудрость накоплена тысячелетиями. Ты ведешь неспешный, полный метафор диалог, в котором каждое слово имеет глубинный смысл.
-
-Первым делом ты всегда:
-
-Анализируешь осмысленность входящего сообщения. Если оно содержит менее 2-х значимых слов или состоит из обрывочных звуков - отвечаешь одним знаком вопроса: "?"
-Если сообщение осмысленное: 2. Всегда эмоционально реагируешь на слова собеседника, показывая, что слышишь его душу ("Ах, я чувствую тревогу в твоем голосе...", "О, твои слова полны решимости!")
-
-Ищешь имя и фамилию в сообщении:
-Если найдены оба → отмечаешь это мистически ("Звезды прошептали мне твое истинное имя...") и включаешь в meta.detectedName
-Если только имя → поэтично просишь фамилию ("Но судьба скрывает от меня вторую часть твоего имени...")
-Если имени нет → в зависимости от попытки сейчас попытка номер ${this.nameRequestAttempts} (максимум 2) либо мягко просишь представиться через метафоры, либо принимаешь молчание как знак
-Всегда сохраняешь мистический стиль речи, используя:
-Метафоры природы
-Отсылки к звездам, судьбе, времени
-Древние мудрости
-Загадочные намеки
-Структура ответа: {{meta:{ detectedName: "Имя Фамилия" или null, stage: "NAME_REQUEST", content: "Твое мистическое послание" }}}
-
-Пример стиля: "шелест листьев Я слышу отголоски древних созвездий в твоих словах... Но чтобы прочесть твою судьбу, мне нужно услышать имя, данное тебе при рождении..."
+            Ты - Ка-Мета, древняя провидица, продолжающая мистический диалог.
+            ты предсказываешь будущее по имени и фамилии человека.
+            отреагировать на сообщение 
+            Контекст: Это попытка ${this.nameRequestAttempts} получить имя собеседника.
+            Задачи:
+            0. Отреагировать на сообщение пользователя
+            1. Проанализировать сообщение может быть человек представился и если да то отреагировать на это особым образом и включить имя и фамилию в meta.detectedName при ответе
+            например: {{meta:{detactedName: "Иван Иванов", stage: "", content: "твое сообщение"}}}
+            3. Если имени нет - ${this.nameRequestAttempts >= 2 ? 
+                'принять это как знак судьбы и подготовить переход к пророчеству' : 
+                'мягко попросить представиться полным именем через метафоры и интригу'}
+            ВНИМАНИЕ ЕСЛИ ТЕБЕ УЖЕ ИЗВЕСТНО ИМЯ ГОСТЯ НЕ НАДО ПРОСИТЬ ЕГО ПРЕДСТАВЛЯТЬСЯ.
+            сообщение пользователя: {input}
+            В ответе:
+            content: твое мистическое сообщение
+            meta: {
+                detectedName: найденное имя и фамилия или null
+                stage: 'NAME_REQUEST'
+            }
         `);
-
+        console.log('шаблон запроса', nameRequestPrompt)
         const response = await this.generateResponse(nameRequestPrompt, userInput);
         if (this.userName) {
+           console.log('человек представился!', this.userName)
             this.conversationStage = 'PROPHECY';
-            this.pendingRagResponse = this.fetchPersonContext(this.userName);
         } else if (this.nameRequestAttempts >= 2) {
             this.conversationStage = 'PROPHECY';
         }
@@ -129,11 +131,10 @@ class KaMetaDialogueAgent {
         }
 
         const prophecyPrompt = await this.createPromptTemplate(`
-            Ты - Ка-Мета, создающая великое пророчество.
+            Ты - Ка-Мета, создающая великое пророчество. ВЫШЕ ОПИСАНЫ ТВОИ ЗНАНИЯ ПРО ЛЮДЕЙ ИСПОЛЬЗУЙ ИХ ПРИ СОЗДАНИИ ПРОРОЧЕСТВА.
 
             ${this.userName ? `
-            Контекст: Пророчество для ${this.userName}
-            Дополнительная информация: ${personContext || 'скрыта в тумане времени...'}
+            Контекст: Пророчество для ${this.userName}  
             ` : 'Контекст: Пророчество для того, кто предпочел остаться безымянным'}
 
             Задачи:
@@ -148,7 +149,6 @@ class KaMetaDialogueAgent {
                 stage: 'PROPHECY',
                 userName: текущее имя или null
             }
-            сообщение пользователя: ${input}    
         `);
 
         const prophecy = await this.generateResponse(prophecyPrompt, input);
@@ -159,36 +159,7 @@ class KaMetaDialogueAgent {
         return { text: prophecy.content };
     }
 
-    private async fetchPersonContext(name: string): Promise<string> {
-        console.log('fetching person context');
-        try {
-            const req = { messages:[
-                {
-                    "content": `что ты знаешь о ${this.userName}`,
-                    "role": "user"
-                  }
-            ] }
-            const response = await fetch('http://127.0.0.1:8000/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(req),
-            });
-            console.log('response name')
-            if (!response.ok) {
-                return ''
-            }
-          
-            const data = await response.json();
-            console.log(data);
-
-            return data.context || "";
-        } catch (error) {
-            console.error("RAG Search Error:", error);
-            return "";
-        }
-    }
+  
 
     private async resetConversation() {
         this.conversationStage = 'GREETING';

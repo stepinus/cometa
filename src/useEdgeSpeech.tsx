@@ -1,6 +1,4 @@
-'use client'
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getVoices, tts } from 'edge-tts'
 import { EdgeTTSClient, ProsodyOptions, OUTPUT_FORMAT } from 'edge-tts-client';
 
 const useEdgeTTS = () => {
@@ -9,86 +7,105 @@ const useEdgeTTS = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const audioBufferRef = useRef<Uint8Array[]>([]);
+  const audioEndResolveRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const client = new EdgeTTSClient();
-    setTtsClient(client);
-    audioContextRef.current = new AudioContext();
+    try {
+      const client = new EdgeTTSClient();
+      setTtsClient(client);
+      audioContextRef.current = new AudioContext();
+    } catch (error) {
+      console.error('Error creating audio context:', error);
+    }
 
     return () => {
-      client.close();
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      try {
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+        }
+      } catch (error) {
+        console.error('Error cleaning up audio context:', error);
       }
     };
-
   }, []);
 
-  const synthesizeAndPlay = useCallback(async (text: string) => {
-    if (!ttsClient || !audioContextRef.current) return;
-    await ttsClient.setMetadata('ru-RU-SvetlanaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, 'ru-RU');
-    const options = new ProsodyOptions();
-    options.pitch = 'low';
-    options.rate = 1.2;
-    options.volume = 90;
-
-    // Очищаем предыдущий буфер
-    audioBufferRef.current = [];
-
-    const stream = ttsClient.toStream(text, options);
-    setIsPlaying(true);
-
-    stream.on('data', async (audioChunk: Uint8Array) => {
-      // Добавляем чанк в буфер
-      audioBufferRef.current.push(audioChunk);
+  const synthesizeAndPlay = useCallback(async (text: string): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+      if (!ttsClient || !audioContextRef.current) {
+        reject(new Error('TTS client or audio context not initialized'));
+        return;
+      }
 
       try {
-        // Создаем единый буфер из всех полученных чанков
-        const concatenatedBuffer = new Uint8Array(
-          audioBufferRef.current.reduce((acc, chunk) => acc + chunk.length, 0)
-        );
-        
-        let offset = 0;
-        audioBufferRef.current.forEach(chunk => {
-          concatenatedBuffer.set(chunk, offset);
-          offset += chunk.length;
+        // Добавляем небольшой префикс тишины для плавного старта
+        const silentPrefixMs = 200;
+        const silentPrefix = new Uint8Array(silentPrefixMs * 2); // 16-bit audio
+
+        await ttsClient.setMetadata('ru-RU-SvetlanaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, 'ru-RU');
+        const options = new ProsodyOptions();
+        options.pitch = 'x-low';
+        options.rate = 'medium';
+        options.volume = 90;
+
+        audioBufferRef.current = [silentPrefix];
+
+        const stream = ttsClient.toStream(text, options);
+        setIsPlaying(true);
+
+        // Устанавливаем резолв для окончания аудио
+        audioEndResolveRef.current = resolve;
+
+        stream.on('data', async (audioChunk: Uint8Array) => {
+          audioBufferRef.current.push(audioChunk);
         });
 
-        // Декодируем аудио буфер
-        const audioBuffer = await audioContextRef.current!.decodeAudioData(
-          concatenatedBuffer.buffer
-        );
-        
-        // Останавливаем предыдущий источник если он есть
-        if (sourceNodeRef.current) {
-          sourceNodeRef.current.stop();
-          sourceNodeRef.current.disconnect();
-        }
+        stream.on('end', async () => {
+          try {
+            const concatenatedBuffer = new Uint8Array(
+              audioBufferRef.current.reduce((acc, chunk) => acc + chunk.length, 0)
+            );
+            let offset = 0;
+            audioBufferRef.current.forEach((chunk) => {
+              concatenatedBuffer.set(chunk, offset);
+              offset += chunk.length;
+            });
 
-        // Создаем новый источник и проигрываем
-        const source = audioContextRef.current!.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContextRef.current!.destination);
-        sourceNodeRef.current = source;
-        source.start();
+            const audioBuffer = await audioContextRef.current!.decodeAudioData(
+              concatenatedBuffer.buffer
+            );
 
-        source.onended = () => {
-          console.log('Audio ended');
-          source.disconnect();
-        };
+            if (sourceNodeRef.current) {
+              sourceNodeRef.current.stop();
+              sourceNodeRef.current.disconnect();
+            }
+
+            const source = audioContextRef.current!.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContextRef.current!.destination);
+            sourceNodeRef.current = source;
+
+            // Добавляем точный обработчик окончания
+            source.onended = () => {
+              setIsPlaying(false);
+              if (audioEndResolveRef.current) {
+                audioEndResolveRef.current();
+                audioEndResolveRef.current = null;
+              }
+            };
+
+            source.start();
+          } catch (error) {
+            console.error('Error decoding or playing audio:', error);
+            reject(error);
+          }
+        });
+
+ 
 
       } catch (error) {
-        console.error('Error decoding audio:', error);
+        console.error('Error synthesizing audio:', error);
+        reject(error);
       }
-    });
-
-    stream.on('end', () => {
-      setTimeout(()=>{
-        if(isPlaying){
-          /// do something
-        }
-      },500)
-      setIsPlaying(false);
     });
   }, [ttsClient]);
 
@@ -99,12 +116,18 @@ const useEdgeTTS = () => {
     }
     setIsPlaying(false);
     audioBufferRef.current = [];
+    
+    // Резолвим промис, если аудио прервано
+    if (audioEndResolveRef.current) {
+      audioEndResolveRef.current();
+      audioEndResolveRef.current = null;
+    }
   }, []);
 
   return {
     synthesizeAndPlay,
     stop,
-    isPlaying
+    isPlaying,
   };
 };
 
