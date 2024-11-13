@@ -4,12 +4,10 @@ import Scene from '../sphere/src/App'
 
 import { useState, useEffect} from "react";
 import { useMicVAD, type ReactRealTimeVADOptions } from "@ricky0123/vad-react";
-import { createKaMetaAgent } from "./langchain";
 import { useAudioChunkProcessor } from './useAudioChunkProcessor';
 import useEdgeTTS from './useEdgeSpeech';
 import {useStore} from './store'
 import { useProphecyGenerator } from './useProphecy';
-import { useDeepgramTTS } from './useDeepgramTTS';
 
 const options = new ProsodyOptions();
 options.pitch = 'high';
@@ -25,7 +23,6 @@ interface VADState {
   pause: () => void;
 }
 
-const kaMetaAgent = createKaMetaAgent()
 
 export default function ChatPage() {
   const setStatus = useStore((state) => state.setStatus);
