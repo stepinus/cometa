@@ -167,7 +167,7 @@ const resetState = () =>{
   setMessages([{role:'system', content:systemMessage}])
 }
      
-const processUserInput = async (input) =>{
+const processUserInput = useCallback(async (input)=>{
   if(userName && userDesire && userEnergy){
     setStage('prophecy');
   }
@@ -205,11 +205,16 @@ const processUserInput = async (input) =>{
             messages: [...messages, {role:'user',content:input},{ role: 'system', content: propmpt }],
             schema:answerSchema
           });
-          resetState();
+          setUserName('');
+          setUserDesire('');
+          setUserEnergy('');
+          setPendingInfo(null);
+          setStage('introduction');
+          setMessages([{role:'system', content:systemMessage}])
           return prophecy.object.answer;
     
     }
 
-}
+},[userDesire,userName, userEnergy, pendingInfo, stage, messages])
 return {processUserInput, stage}
 }
