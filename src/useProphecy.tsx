@@ -205,16 +205,17 @@ const processUserInput = useCallback(async (input)=>{
             messages: [...messages, {role:'user',content:input},{ role: 'system', content: propmpt }],
             schema:answerSchema
           });
-          setUserName('');
-          setUserDesire('');
-          setUserEnergy('');
-          setPendingInfo(null);
-          setStage('introduction');
-          setMessages([{role:'system', content:systemMessage}])
-          return prophecy.object.answer;
+          
+          // Возвращаем пророчество перед сбросом состояния
+          const prophecyAnswer = prophecy.object.answer;
+          
+          // Сбрасываем состояние ПОСЛЕ возврата пророчества
+          resetState();
+          
+          return prophecyAnswer;
     
     }
 
 },[userDesire,userName, userEnergy, pendingInfo, stage, messages])
-return {processUserInput, stage}
+return {processUserInput, stage, resetState}
 }
