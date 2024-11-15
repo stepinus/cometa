@@ -25,8 +25,8 @@ type UserInfo = {
 const openai = createOpenAI({
     // custom settings, e.g.
     compatibility: 'strict', // strict mode, enable when using the OpenAI API
-    baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE2,
-    apiKey:import.meta.env.VITE_APP_OPENAI_API_KEY2,
+    baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE,
+    apiKey:import.meta.env.VITE_APP_OPENAI_API_KEY,
   });
 
 
