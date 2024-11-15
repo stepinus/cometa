@@ -201,7 +201,7 @@ const processUserInput = async (input) =>{
           console.log(info);
           const propmpt = prophecyPrompt(info)
           const prophecy = await generateObject({
-            model: openai('gpt-4o-mini',  {  structuredOutputs: true}),
+            model: openai(gpt4o,  {  structuredOutputs: true}),
             messages: [...messages, {role:'user',content:input},{ role: 'system', content: propmpt }],
             schema:answerSchema
           });
