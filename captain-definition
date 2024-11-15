@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "templateId": "nodejs/18",
+  "templateId": "node:18-alpine",
   "serviceName": "cometa",
   "source": {
     "type": "git",
@@ -19,10 +19,10 @@
     "startCommand": "pnpm dev --host 0.0.0.0"
   },
   "env": {
-    "VITE_APP_OPENAI_API_BASE": "https://api.aitunnel.ru/v1/",
-    "VITE_APP_OPENAI_API_BASE2": "https://openrouter.ai/api/v1/",
-    "VITE_APP_OPENAI_API_KEY2": "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",
-    "VITE_APP_OPENAI_API_KEY": "sk-aitunnel-R22Og9XWYQtelgNktlmJnd32moroJs3Z",
+    "VITE_APP_OPENAI_API_BASE": "https://openrouter.ai/api/v1/",
+    "VITE_APP_OPENAI_API_KEY": "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",
+    "VITE_APP_OPENAI_API_BASE2": "https://api.vsegpt.ru/v1/",
+    "VITE_APP_OPENAI_API_KEY2": "sk-or-vv-5079af64d63ecffa01709d6f64e1255aa4c54faad180bccaee4c9403233c8833",
     "VITE_APP_COMETA_API_KEY": "sk-d13c3a992a1248598d632d04e85e7641",
     "VITE_APP_DEEPGRAM_API_KEY": "38867a88da1a6a76053657528014b8825bbe4f93"
   },
