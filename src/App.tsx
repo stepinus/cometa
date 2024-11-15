@@ -72,10 +72,12 @@ export default function ChatPage() {
       console.log('submit')
       const response = await processUserInput(inputText.text)
       await synthesizeAndPlay(response);
-      setIsPending(false); // Очищаем поле ввода после submit
-      setStatus(true);
+      setIsPending(false); // Очищаем по
+            setStatus(true);
     } catch (e) {
       console.error(e);
+      setIsPending(false); // Очищаем по
+      setStatus(true);
     }
   }
 
