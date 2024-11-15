@@ -10,8 +10,8 @@ import {useStore} from '../../src/store'
 function Scene() {
   const mesh = useRef();
   const { speed, colorA, colorB, intensity, particalSize } = useControls({
-    colorA: "#1c4534",
-    colorB: "#00ff23",
+    colorA: "#4B0082",
+    colorB: "#9370DB",
     speed: {
       value: 1.1,
       min: 0.1,
