@@ -1,7 +1,7 @@
-# Этап клонирования репозитория
+# Этап клонирования репозитория с последней версией
 FROM alpine/git as clone-stage
 WORKDIR /app
-RUN git clone https://github.com/stepinus/cometa.git .
+RUN git clone --depth 1 https://github.com/stepinus/cometa.git .
 
 # Этап сборки
 FROM node:18-alpine
