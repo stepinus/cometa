@@ -44,7 +44,7 @@ const useEdgeTTS = () => {
         await ttsClient.setMetadata('ru-RU-SvetlanaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, 'ru-RU');
         const options = new ProsodyOptions();
         options.pitch = 'medium';
-        options.rate = 'medium';
+        options.rate = 'fast';
         options.volume = 90;
 
         audioBufferRef.current = [silentPrefix];

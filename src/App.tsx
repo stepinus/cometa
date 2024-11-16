@@ -57,8 +57,8 @@ export default function ChatPage() {
         if(isPending) return;
         setIsPending(true);
         setStatus(false);
-       const text =  await processAudioData(frame)
-       handleSubmit(text);
+      //  const text =  await processAudioData(frame)
+      //  handleSubmit(text);
 
     },
 
@@ -89,7 +89,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen mflex flex-col items-center justify-center " style={{height:'100%'}}>
-     <Scene /> 
+     {/* <Scene />  */}
      <div className="mt-4 flex items-center">
        <input 
          type="text" 
@@ -99,7 +99,7 @@ export default function ChatPage() {
          className="border p-2 mr-2"
        />
        <button 
-         onClick={() => handleSubmit(text)} 
+         onClick={() => handleSubmit({text})} 
          className="bg-blue-500 text-white p-2 rounded"
        >
          Отправить
