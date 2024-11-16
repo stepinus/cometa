@@ -37,7 +37,6 @@ export default function ChatPage() {
   const [chainOn, setChainOn] = useState<boolean>(false);
   const {processAudioData} = useAudioChunkProcessor({})
   const {processUserInput} = useProphecyGenerator();
-  // const { playText, isPlaying:isDeepPlaying } = useDeepgramTTS();
 
   const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
@@ -57,23 +56,21 @@ export default function ChatPage() {
         if(isPending) return;
         setIsPending(true);
         setStatus(false);
-      //  const text =  await processAudioData(frame)
-      //  handleSubmit(text);
+       const text =  await processAudioData(frame)
+       handleSubmit(text);
 
     },
 
     positiveSpeechThreshold: 0.7,
-    minSpeechFrames: 10,
+    minSpeechFrames: 7,
   }) as VADState;
 
   async function handleSubmit(inputText:any) {
-    console.log(inputText)
     try {
-      console.log('submit')
       const response = await processUserInput(inputText.text)
       await synthesizeAndPlay(response);
-      setIsPending(false); // Очищаем по
-            setStatus(true);
+      setIsPending(false);
+       setStatus(true);
     } catch (e) {
       console.error(e);
       setIsPending(false); // Очищаем по
@@ -89,7 +86,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen mflex flex-col items-center justify-center " style={{height:'100%'}}>
-     {/* <Scene />  */}
+     <Scene /> 
      <div className="mt-4 flex items-center">
        <input 
          type="text" 

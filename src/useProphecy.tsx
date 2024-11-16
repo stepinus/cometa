@@ -156,7 +156,7 @@ const processUserInput = useCallback(async (input)=>{
 
   }
   if (stage === 'prophecy'){
-    const facts = await pendingInfo()
+    const facts = await pendingInfo
     const prophecyMessage = makeProphecyMessage(userName, traits,facts,summary)
     const prophecy = await generateObject({
       model: openai('openai/gpt-4o',  {  structuredOutputs: true}),
