@@ -134,8 +134,7 @@ const processUserInput = useCallback(async (input)=>{
     });
     setCount(prev=>prev-1);
 
-      console.log(result.object)
-      if(result.object.name || !pendingInfo){
+      if(result.object.name && !pendingInfo){
         setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
       }
