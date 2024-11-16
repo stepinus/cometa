@@ -64,7 +64,9 @@ export default function ChatPage() {
   async function handleSubmit(inputText:any) {
     try {
       const response = await processUserInput(inputText.text)
-      await synthesizeAndPlay(response);
+      if(response.length > 1){
+        await synthesizeAndPlay(response);
+      }
       setIsPending(false);
        setStatus(true);
     } catch (e) {
