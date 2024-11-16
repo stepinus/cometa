@@ -110,16 +110,37 @@ export default `
   uniform float u_time;
   uniform float u_speed;
   uniform float u_intensity;
+  uniform float u_rotation_speed;
   uniform float u_partical_size;
   uniform vec3 u_color_a;
   varying vec2 v_uv;
   varying float v_displacement;
 
+  // Функция вращения вокруг оси Y
+  mat3 rotationMatrix(float angle) {
+    return mat3(
+      cos(angle), 0.0, sin(angle),
+      0.0, 1.0, 0.0,
+      -sin(angle), 0.0, cos(angle)
+    );
+  }
+
   void main() {
     v_uv = uv;
+    
+    // Базовый шум с учетом времени
     v_displacement = cnoise(position + vec3(u_time * u_speed));
-    v_displacement = v_displacement * u_intensity;
+    
+    // Пульсация в зависимости от интенсивности
+    v_displacement *= u_intensity;
+    
     vec3 pos = position + (v_displacement);
+    
+    // Вращение если установлена скорость вращения
+    if (u_rotation_speed > 0.0) {
+      pos = rotationMatrix(u_time * u_rotation_speed) * pos;
+    }
+    
     vec4 modelPosition = modelMatrix * vec4(pos, 1.0);
     vec4 viewPosition = viewMatrix * modelPosition;
     vec4 projectedPosition = projectionMatrix * viewPosition;

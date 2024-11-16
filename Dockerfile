@@ -1,6 +1,8 @@
 # Этап клонирования репозитория с последней версией
 FROM alpine/git as clone-stage
 WORKDIR /app
+#  - - - - - - - - - - This quick hack invalidates the cache - - - - - - - - - - 
+ADD https://www.google.com /time.now
 RUN git clone --depth 1 https://github.com/stepinus/cometa.git .
 
 # Этап сборки

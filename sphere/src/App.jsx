@@ -9,7 +9,7 @@ import {useStore} from '../../src/store'
 
 function Scene() {
   const mesh = useRef();
-  const { speed, colorA, colorB, intensity, particalSize } = useControls({
+  const { speed, colorA, colorB, particalSize } = useControls({
     colorA: "#4B0082",
     colorB: "#9370DB",
     speed: {
@@ -17,12 +17,6 @@ function Scene() {
       min: 0.1,
       max: 2.0,
       step: 0.05
-    },
-    intensity: {
-      value: 0.2,
-      min: 0.01,
-      max: 0.3,
-      step: 0.01
     },
     particalSize: {
       value: 24.0,
@@ -41,7 +35,10 @@ function Scene() {
         value: speed
       },
       u_intensity: {
-        value: intensity
+        value: 0.2
+      },
+      u_rotation_speed: {
+        value: 0.0
       },
       u_partical_size: {
         value: particalSize
@@ -54,13 +51,28 @@ function Scene() {
       }
     };
   }, []);
+
   useFrame((state) => {
-    const status = useStore.getState().status
+    const status = useStore.getState().status;
+    const intensity = useStore.getState().intensity;
     const { clock } = state;
-    mesh.current.material.uniforms.u_time.value = clock.getElapsedTime();
+
+    if (status) {
+      // Режим когда пользователь говорит - пульсация
+      mesh.current.material.uniforms.u_time.value = clock.getElapsedTime();
+      mesh.current.material.uniforms.u_intensity.value = intensity;
+      mesh.current.material.uniforms.u_rotation_speed.value = 0;
+      mesh.current.material.uniforms.u_partical_size.value = 
+        particalSize * (1 + intensity * 2);
+    } else {
+      // Режим ожидания - вращение
+      mesh.current.material.uniforms.u_time.value = clock.getElapsedTime();
+      mesh.current.material.uniforms.u_intensity.value = 0.1;
+      mesh.current.material.uniforms.u_rotation_speed.value = 2; // Скорость вращения
+      mesh.current.material.uniforms.u_partical_size.value = particalSize;
+    }
+
     mesh.current.material.uniforms.u_speed.value = speed;
-    mesh.current.material.uniforms.u_intensity.value = status ? intensity : intensity*2;
-    mesh.current.material.uniforms.u_partical_size.value = status ? particalSize: particalSize*2 ;
     mesh.current.material.uniforms.u_color_a.value = new THREE.Color(colorA);
     mesh.current.material.uniforms.u_color_b.value = new THREE.Color(colorB);
   });

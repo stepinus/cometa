@@ -1,13 +1,31 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { EdgeTTSClient, ProsodyOptions, OUTPUT_FORMAT } from 'edge-tts-client';
+import { useStore } from './store';
 
 const useEdgeTTS = () => {
   const [ttsClient, setTtsClient] = useState<EdgeTTSClient | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const audioBufferRef = useRef<Uint8Array[]>([]);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const audioEndResolveRef = useRef<(() => void) | null>(null);
+  const audioChunksRef = useRef<Uint8Array[]>([]);
+  const { setIntensity } = useStore();
+  const intensityIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const calculateIntensity = () => {
+    if (analyserRef.current) {
+      const bufferLength = analyserRef.current.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyserRef.current.getByteTimeDomainData(dataArray);
+
+      const intensity = Math.sqrt(
+        dataArray.reduce((sum, value) => sum + Math.pow((value - 128) / 128, 2), 0) / dataArray.length
+      );
+
+      setIntensity(intensity*3);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -23,6 +41,9 @@ const useEdgeTTS = () => {
         if (audioContextRef.current) {
           audioContextRef.current.close();
         }
+        if (intensityIntervalRef.current) {
+          clearInterval(intensityIntervalRef.current);
+        }
       } catch (error) {
         console.error('Error cleaning up audio context:', error);
       }
@@ -37,35 +58,28 @@ const useEdgeTTS = () => {
       }
 
       try {
-        // Добавляем небольшой префикс тишины для плавного старта
-        const silentPrefixMs = 200;
-        const silentPrefix = new Uint8Array(silentPrefixMs * 2); // 16-bit audio
-
         await ttsClient.setMetadata('ru-RU-SvetlanaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, 'ru-RU');
         const options = new ProsodyOptions();
         options.pitch = 'medium';
         options.rate = 'medium';
         options.volume = 90;
 
-        audioBufferRef.current = [silentPrefix];
-
         const stream = ttsClient.toStream(text, options);
         setIsPlaying(true);
-
-        // Устанавливаем резолв для окончания аудио
         audioEndResolveRef.current = resolve;
+        audioChunksRef.current = [];
 
-        stream.on('data', async (audioChunk: Uint8Array) => {
-          audioBufferRef.current.push(audioChunk);
+        stream.on('data', (audioChunk: Uint8Array) => {
+          audioChunksRef.current.push(audioChunk);
         });
 
         stream.on('end', async () => {
           try {
             const concatenatedBuffer = new Uint8Array(
-              audioBufferRef.current.reduce((acc, chunk) => acc + chunk.length, 0)
+              audioChunksRef.current.reduce((acc, chunk) => acc + chunk.length, 0)
             );
             let offset = 0;
-            audioBufferRef.current.forEach((chunk) => {
+            audioChunksRef.current.forEach((chunk) => {
               concatenatedBuffer.set(chunk, offset);
               offset += chunk.length;
             });
@@ -80,13 +94,23 @@ const useEdgeTTS = () => {
             }
 
             const source = audioContextRef.current!.createBufferSource();
+            const analyser = audioContextRef.current!.createAnalyser();
+            
             source.buffer = audioBuffer;
-            source.connect(audioContextRef.current!.destination);
+            source.connect(analyser);
+            analyser.connect(audioContextRef.current!.destination);
+            
             sourceNodeRef.current = source;
+            analyserRef.current = analyser;
 
-            // Добавляем точный обработчик окончания
+            // Запускаем интервал для расчета интенсивности
+            intensityIntervalRef.current = setInterval(calculateIntensity, 50);
+
             source.onended = () => {
               setIsPlaying(false);
+              if (intensityIntervalRef.current) {
+                clearInterval(intensityIntervalRef.current);
+              }
               if (audioEndResolveRef.current) {
                 audioEndResolveRef.current();
                 audioEndResolveRef.current = null;
@@ -100,8 +124,6 @@ const useEdgeTTS = () => {
           }
         });
 
- 
-
       } catch (error) {
         console.error('Error synthesizing audio:', error);
         reject(error);
@@ -114,10 +136,11 @@ const useEdgeTTS = () => {
       sourceNodeRef.current.stop();
       sourceNodeRef.current.disconnect();
     }
+    if (intensityIntervalRef.current) {
+      clearInterval(intensityIntervalRef.current);
+    }
     setIsPlaying(false);
-    audioBufferRef.current = [];
     
-    // Резолвим промис, если аудио прервано
     if (audioEndResolveRef.current) {
       audioEndResolveRef.current();
       audioEndResolveRef.current = null;

@@ -20,8 +20,10 @@ interface StoreState {
   innerSegments: number;
   audioContext?: AudioContext;
   vadAudioData: VADAudioData | null;
-  status:boolean;
-  setStatus:any;
+  status: boolean;
+  intensity: number;
+  setStatus: any;
+  setIntensity: (intensity: number) => void;
   
   setInnerSegments: (value: number) => void;
   updateVADData: (data: Partial<VADAudioData>) => void;
@@ -33,10 +35,10 @@ export const useStore = create<StoreState>((set) => ({
   isInit: false,
   innerSegments: 130,
   vadAudioData: null,
-  isPending:false,
+  intensity: 0,
+  isPending: false,
   setStatus: (status: boolean) => set({ status }),
- 
-
+  setIntensity: (intensity: number) => set({ intensity }),
 
   setInnerSegments: (value) => set({ innerSegments: value }),
   
@@ -62,6 +64,7 @@ export const useStore = create<StoreState>((set) => ({
     });
   },
 }));
+
 const processAudioData = (data) => {
     if (!data || data.length === 0) {
         console.warn("No audio data available");

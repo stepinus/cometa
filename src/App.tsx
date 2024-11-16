@@ -27,6 +27,7 @@ interface VADState {
 
 export default function ChatPage() {
   const setStatus = useStore((state) => state.setStatus);
+  const setIntensity = useStore((state) => state.setIntensity);
   const status = useStore((state) => state.status);
   const { synthesizeAndPlay, stop, isPlaying } = useEdgeTTS();
   const [text,setText]  = useState<string>("");
@@ -37,8 +38,12 @@ export default function ChatPage() {
   const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
-      // console.log(1)
-      // updateVADData({ rawData: audioData, energy: probabilities[0] });
+      // Расчет интенсивности через среднеквадратичное значение (RMS)
+      const intensity = Math.sqrt(
+        audioData.reduce((sum, value) => sum + value * value, 0) / audioData.length
+      );
+      // Обновление интенсивности в глобальном store
+      setIntensity(intensity*3);
     },
     onSpeechStart: () => {
         // if(isPending) return;
@@ -65,10 +70,11 @@ export default function ChatPage() {
     try {
       const response = await processUserInput(inputText.text)
       if(response.length > 1){
+        setStatus(true);
         await synthesizeAndPlay(response);
       }
+      setStatus(true);
       setIsPending(false);
-       setStatus(true);
     } catch (e) {
       console.error(e);
       setIsPending(false); // Очищаем по
