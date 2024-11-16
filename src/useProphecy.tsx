@@ -166,7 +166,7 @@ const processUserInput = useCallback(async (input)=>{
       return result.object.response;
 
   }
-  if (stage === 'prophecy'){
+  if (stage === 'prophecy' || count < 1){
     const facts = await pendingInfo
     const prophecyMessage = makeProphecyMessage(userName, traits,facts,summary)
     const prophecy = await generateObject({
