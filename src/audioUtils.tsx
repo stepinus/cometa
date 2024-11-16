@@ -80,6 +80,7 @@ export const transcribeAudio = async (audioBlob: Blob) => {
       file: audioFile,
       model: 'stt-openai/whisper-1',
       response_format: 'json',
+      language:"ru",
     });
     console.log(result)
     return result;
