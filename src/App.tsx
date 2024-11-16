@@ -2,12 +2,14 @@
 import { EdgeTTSClient, ProsodyOptions, OUTPUT_FORMAT } from 'edge-tts-client';
 import Scene from '../sphere/src/App'
 
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useMicVAD, type ReactRealTimeVADOptions } from "@ricky0123/vad-react";
 import { useAudioChunkProcessor } from './useAudioChunkProcessor';
 import useEdgeTTS from './useEdgeSpeech';
 import {useStore} from './store'
 import { useProphecyGenerator } from './useProphecy';
+import { Leva } from 'leva';
+import { StatusMessage } from './StatusMessage';
 
 const options = new ProsodyOptions();
 options.pitch = 'high';
@@ -23,18 +25,12 @@ interface VADState {
   pause: () => void;
 }
 
-
 export default function ChatPage() {
   const setStatus = useStore((state) => state.setStatus);
   const status = useStore((state) => state.status);
-
   const { synthesizeAndPlay, stop, isPlaying } = useEdgeTTS();
   const [text,setText]  = useState<string>("");
   const [isPending, setIsPending] = useState<boolean>(false);
-  const [transcript, setTranscript] = useState<string>("");
-  const [interimTranscript, setInterimTranscript] = useState<string>("");
-  const [response, setResponse] = useState<string>("");
-  const [chainOn, setChainOn] = useState<boolean>(false);
   const {processAudioData} = useAudioChunkProcessor({})
   const {processUserInput} = useProphecyGenerator();
 
@@ -86,22 +82,24 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen mflex flex-col items-center justify-center " style={{height:'100%'}}>
-     <Scene /> 
-     <div className="mt-4 flex items-center">
-       <input 
-         type="text" 
-         value={text} 
-         onChange={(e) => setText(e.target.value)} 
-         placeholder="Введите текст" 
-         className="border p-2 mr-2"
-       />
-       <button 
-         onClick={() => handleSubmit({text})} 
-         className="bg-blue-500 text-white p-2 rounded"
-       >
-         Отправить
-       </button>
-     </div>
+      <StatusMessage isPending={isPending} isPlaying={isPlaying} />
+      <Leva hidden/>
+      <Scene /> 
+      <div className="mt-4 flex items-center">
+        <input 
+          type="text" 
+          value={text} 
+          onChange={(e) => setText(e.target.value)} 
+          placeholder="Введите текст" 
+          className="border p-2 mr-2"
+        />
+        <button 
+          onClick={() => handleSubmit({text})} 
+          className="bg-blue-500 text-white p-2 rounded"
+        >
+          Отправить
+        </button>
+      </div>
     </div>
   )
 }

@@ -134,16 +134,26 @@ const processUserInput = useCallback(async (input)=>{
     });
     setCount(prev=>prev-1);
 
-    setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
       console.log(result.object)
       if(result.object.name || !pendingInfo){
         setPendingInfo(getInfo(result.object.name));
+        setUserName(result.object.name)
       }
       if(result.object.traits){
         setTraits(result.object.traits)
       }
       if(result.object.command === 'reset'){
         resetState();
+      }
+      if(result.object.command === 'change_name'){
+        setUserName(result.object.name)
+        setPendingInfo(getInfo(result.object.name));
+      }
+      if(result.object.command === 'skip'){
+        setCount(prev=>prev+1)
+        const popedMessages = messages.pop()
+        setMessages(popedMessages)
+        return ''
       }
       if(result.object.command.includes('max_questions')){
         const splitted = result.object.command.split('_')
@@ -152,6 +162,8 @@ const processUserInput = useCallback(async (input)=>{
       if(result.object.command === 'prophecy'){
         setStage('prophecy')
       }
+      setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
+
       return result.object.response;
 
   }

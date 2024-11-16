@@ -223,7 +223,7 @@ importers:
         specifier: ^3.5.0
         version: 3.7.1(@swc/helpers@0.5.5)(vite@5.4.10(@types/node@20.17.6)(terser@5.36.0))
       autoprefixer:
-        specifier: ^10.4.19
+        specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
       crypto-browserify:
         specifier: ^3.12.1
@@ -244,7 +244,7 @@ importers:
         specifier: ^0.4.7
         version: 0.4.14(eslint@9.14.0(jiti@1.21.6))
       postcss:
-        specifier: ^8
+        specifier: ^8.4.47
         version: 8.4.47
       raw-loader:
         specifier: ^4.0.2
@@ -253,7 +253,7 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       tailwindcss:
-        specifier: ^3.4.1
+        specifier: ^3.4.14
         version: 3.4.14
       typescript:
         specifier: ^5
