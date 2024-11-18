@@ -128,7 +128,7 @@ const processUserInput = useCallback(async (input)=>{
       model: openai(gpt4o, { structuredOutputs: true }),
       messages: newMessages,
       schema :intelligentCollectionSchema,
-      temperature: 0.8,
+      temperature: 0.6,
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
     });
