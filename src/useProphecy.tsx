@@ -98,7 +98,7 @@ const info = await getInfoCompletion(token, userName)
 return info;
 }
 export function useProphecyGenerator(){
-    const [maxCount, setMaxCount] = useState<number>(5)
+    const [maxCount, setMaxCount] = useState<number>(6)
     const [stage, setStage] = useState<ProphecyStage>('introduction')
     const [pendingInfo, setPendingInfo] = useState<any>(null);
     const [userName, setUserName] = useState<string>('');
@@ -119,6 +119,7 @@ export function useProphecyGenerator(){
       }
      
 const processUserInput = useCallback(async (input)=>{
+  if (count<1) setStage('prophecy');
   if(stage === 'introduction' && count > 0) { 
     const countMessage = {role:'system',content:`осталось вопросов ${count} , узнанная информация о собеседнике: ${traits.join(', ')}`};
     const newMessages = [...messages,countMessage,{role:'user',content:input}];
@@ -128,7 +129,7 @@ const processUserInput = useCallback(async (input)=>{
       model: openai(gpt4o, { structuredOutputs: true }),
       messages: newMessages,
       schema :intelligentCollectionSchema,
-      temperature: 0.6,
+      temperature: 0.7,
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
     });
@@ -150,8 +151,6 @@ const processUserInput = useCallback(async (input)=>{
       }
       if(result.object.command === 'skip'){
         setCount(prev=>prev+1)
-        const popedMessages = messages.pop()
-        setMessages(popedMessages)
         return ''
       }
       if(result.object.command.includes('max_questions')){
@@ -160,6 +159,7 @@ const processUserInput = useCallback(async (input)=>{
       }
       if(result.object.command === 'prophecy'){
         setStage('prophecy')
+        
       }
       setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
 
@@ -167,13 +167,15 @@ const processUserInput = useCallback(async (input)=>{
 
   }
   if (stage === 'prophecy' || count < 1){
+    console.log('prophecy')
     const facts = await pendingInfo
     const prophecyMessage = makeProphecyMessage(userName, traits,facts,summary)
+    console.log('pp',prophecyMessage)
     const prophecy = await generateObject({
       model: openai('openai/gpt-4o',  {  structuredOutputs: true}),
       messages: [prophecyMessage, {role:'user',content:input}],
       schema:prophecySchema,
-      temperature: 0.8,
+      temperature: 0.7,
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
     });
@@ -182,7 +184,6 @@ const processUserInput = useCallback(async (input)=>{
     
     // Сбрасываем состояние ПОСЛЕ возврата пророчества
     resetState();
-    console.log('userName', userName)
     return prophecyAnswer
   }
   resetState()
