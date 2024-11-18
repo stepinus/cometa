@@ -4,7 +4,7 @@ import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
 import { z } from 'zod';
 import { set } from 'lodash';
-const gpt4o = 'openai/gpt-4o-mini'
+const gpt4o = 'openai/gpt-4o'
 
 
 
