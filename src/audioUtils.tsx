@@ -1,8 +1,8 @@
 import { OpenAI } from 'openai';
 
 export const client = new OpenAI({
-  apiKey: import.meta.env.VITE_APP_OPENAI_API_KEY2 || '',
-  baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE2,
+  apiKey: 'sk-aitunnel-R22Og9XWYQtelgNktlmJnd32moroJs3Z',
+  baseURL: 'https://api.aitunnel.ru/v1/',
   dangerouslyAllowBrowser: true,
 });
 
@@ -78,7 +78,7 @@ export const transcribeAudio = async (audioBlob: Blob) => {
 
     const result = await client.audio.transcriptions.create({
       file: audioFile,
-      model: 'stt-openai/whisper-1',
+      model: 'whisper-1',
       response_format: 'json',
       language:"ru",
     });
