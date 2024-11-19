@@ -1,7 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import glsl from "vite-plugin-glslify-inject"; // https://vitejs.dev/config/
+import glsl from "vite-plugin-glslify-inject";
 import {viteStaticCopy} from "vite-plugin-static-copy";
+
 export default defineConfig({
   base: "/",
   build: {
@@ -42,9 +43,23 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api/v1': {
-        target: 'http://localhost:8000/api',
-        changeOrigin: true
+      '/salute': {
+        target: 'https://ngw.devices.sberbank.ru:9443',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/salute/, '/api/v2/oauth')
+      },
+      '/speech': {
+        target: 'https://smartspeech.sber.ru',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/speech/, '/rest/v1/speech:recognize')
+      },
+      '/synthesize': {
+        target: 'https://smartspeech.sber.ru',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/synthesize/, '/rest/v1/text:synthesize')
       }
     }
   },

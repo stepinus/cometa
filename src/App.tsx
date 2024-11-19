@@ -10,6 +10,7 @@ import {useStore} from './store'
 import { useProphecyGenerator } from './useProphecy';
 import { Leva } from 'leva';
 import { StatusMessage } from './StatusMessage';
+import useSaluteSTT from './useSaluteSTT';
 
 const options = new ProsodyOptions();
 options.pitch = 'high';
@@ -34,7 +35,7 @@ export default function ChatPage() {
   const [isPending, setIsPending] = useState<boolean>(false);
   const {processAudioData} = useAudioChunkProcessor({})
   const {processUserInput} = useProphecyGenerator();
-
+ const  {recognizeSpeech, synthesizeSpeech} = useSaluteSTT();
   const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
@@ -57,8 +58,9 @@ export default function ChatPage() {
         if(isPending) return;
         setIsPending(true);
         setStatus(false);
-       const text =  await processAudioData(frame)
-       handleSubmit(text);
+   const result = await recognizeSpeech(frame);
+    const text = result.result.join('.')  
+    handleSubmit(text);
 
     },
 
@@ -68,15 +70,20 @@ export default function ChatPage() {
 
   async function handleSubmit(inputText:any) {
     try {
-      const response = await processUserInput(inputText.text)
+      if(inputText.length < 4) {
+      setStatus(true);
+      setIsPending(false);
+      return
+    };
+      const response = await processUserInput(inputText)
       if(response.length > 1){
         setStatus(true);
-        await synthesizeAndPlay(response);
+        await synthesizeSpeech(response);
+        console.log(response)
       }
       setStatus(true);
       setIsPending(false);
     } catch (e) {
-      console.error(e);
       setIsPending(false); // Очищаем по
       setStatus(true);
     }
