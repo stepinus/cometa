@@ -172,6 +172,10 @@ const useSaluteSTT = () => {
       if (decoderRef.current) {
         decoderRef.current.free();
       }
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
     };
   }, []);
 
@@ -181,7 +185,9 @@ const useSaluteSTT = () => {
   ): Promise<void> => {
     return new Promise(async (resolve, reject) => {
       try {
+        console.log('Начало синтеза речи');
         const currentToken = await getToken();
+        console.log('Токен получен:', currentToken);
 
         const format = options.format || 'opus';
         const voice = options.voice || 'May_24000';
@@ -193,6 +199,7 @@ const useSaluteSTT = () => {
           'Content-Type': 'application/ssml',
         };
 
+        console.log('Отправка запроса на синтез речи');
         const response = await fetch(`/synthesize?${queryParams.toString()}`, {
           method: 'POST',
           headers,
@@ -200,61 +207,114 @@ const useSaluteSTT = () => {
         });
 
         if (!response.ok || !response.body) {
+          console.error(`Speech synthesis failed: ${response.statusText}`);
           throw new Error(`Speech synthesis failed: ${response.statusText}`);
         }
 
+        console.log('Получены данные для декодирования');
         const oggOpusData = await response.arrayBuffer();
         const decoder = decoderRef.current;
         if (!decoder) {
+          console.error('Decoder is not initialized.');
           throw new Error('Decoder is not initialized.');
         }
 
+        console.log('Проверка готовности декодера перед декодированием');
+        if (!decoder.ready) {
+          console.warn('Decoder еще не готов. Ждем...');
+          await decoder.ready;
+        }
+
+        console.log('Начало декодирования данных');
         const decoded = await decoder.decode(new Uint8Array(oggOpusData)); // Добавлено await
+        console.log('Декодирование завершено:', decoded);
+
+        // Проверка существующего AudioContext и его состояния
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+          console.log('Закрытие существующего AudioContext');
+          await audioContextRef.current.close();
+        }
 
         const audioContext = new AudioContext({ sampleRate: decoded.sampleRate });
         audioContextRef.current = audioContext;
+        console.log('Создан новый AudioContext:', audioContext);
 
         // Создание анализатора и подключение его к AudioContext
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 2048;
         analyserRef.current = analyser;
+        console.log('Анализатор создан и подключен:', analyser);
 
         const audioBuffer = audioContext.createBuffer(decoded.channelData.length, decoded.channelData[0].length, decoded.sampleRate);
         decoded.channelData.forEach((channel, index) => {
           audioBuffer.copyToChannel(channel, index);
         });
+        console.log('AudioBuffer заполнен:', audioBuffer);
 
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(analyser); // Подключение источника к анализатору
         analyser.connect(audioContext.destination); // Подключение анализатора к выходу
 
+        console.log('Начало воспроизведения аудио');
         source.start();
 
         setIsSpeaking(true);
+        let isResolved = false;
+
+        // Установка обработчика завершения воспроизведения
         source.onended = () => {
-          setIsSpeaking(false);
-          decoder.reset().catch(err => {
-            console.error('Ошибка при сбросе декодера:', err);
-          });
-          resolve();
+          if (!isResolved) {
+            console.log('Воспроизведение аудио завершено');
+            setIsSpeaking(false);
+            decoder.reset().catch(err => {
+              console.error('Ошибка при сбросе декодера:', err);
+            });
+            isResolved = true;
+            clearTimeout(playbackTimeout);
+            resolve();
+          }
         };
 
+        // Добавление обработчика ошибок воспроизведения
+        // source.onerror = (e) => {
+        //   if (!isResolved) {
+        //     console.error('Ошибка воспроизведения аудио:', e);
+        //     setIsSpeaking(false);
+        //     setError(new Error('Ошибка воспроизведения аудио'));
+        //     isResolved = true;
+        //     clearTimeout(playbackTimeout);
+        //     reject(e);
+        //   }
+        // };
+
+        // Добавление таймаута на случай, если событие onended не сработает
+        const playbackDuration = decoded.channelData[0].length / decoded.sampleRate; // Расчет длительности воспроизведения в секундах
+        const playbackTimeout = setTimeout(() => {
+          if (!isResolved) {
+            console.warn('Таймаут: воспроизведение аудио не завершилось вовремя');
+            setIsSpeaking(false);
+            isResolved = true;
+            resolve();
+          }
+        }, (playbackDuration * 1000) + 5000); // время воспроизведения + 5 секунд буфер
+
       } catch (err) {
+        console.error('Ошибка в synthesizeSpeech:', err);
         setIsSpeaking(false);
         setError(err instanceof Error ? err : new Error(String(err)));
         reject(err);
       }
     });
   }, [getToken]);
-  
+
   // Очистка при размонтировании компонента
   useEffect(() => {
     return () => {
       if (intensityIntervalRef.current) {
         clearInterval(intensityIntervalRef.current);
       }
-      if (audioContextRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
     };

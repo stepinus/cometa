@@ -76,11 +76,12 @@ export default function ChatPage() {
       return
     };
       const response = await processUserInput(inputText)
-      if(response.length > 1){
         setStatus(true);
-        await synthesizeSpeech(response);
-        console.log(response)
-      }
+        if(response && response.length > 0){
+          console.log('response', response)
+          await synthesizeSpeech(response);
+        }
+        console.log('miss!')
       setStatus(true);
       setIsPending(false);
     } catch (e) {
@@ -89,11 +90,6 @@ export default function ChatPage() {
     }
   }
 
-  useEffect(()=>{
-  if(isPlaying){setIsPending(true)} else{
-    setIsPending(false)
-  }
-  },[isPlaying])
 
   return (
     <div className="min-h-screen mflex flex-col items-center justify-center " style={{height:'100%'}}>

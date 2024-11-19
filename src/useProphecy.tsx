@@ -21,7 +21,7 @@ const prophecySchema = z.object({
 type ProphecyStage = 'introduction' | 'prophecy' ;
 
 const openai = createOpenAI({
-    compatibility: 'strict', // strict mode, enable when using the OpenAI API
+    compatibility: 'compatible', // strict mode, enable when using the OpenAI API
     baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE,
     apiKey:import.meta.env.VITE_APP_OPENAI_API_KEY,
   });
@@ -98,8 +98,8 @@ const info = await getInfoCompletion(token, userName)
 return info;
 }
 export function useProphecyGenerator(){
-    const [maxCount, setMaxCount] = useState<number>(6)
-    const [stage, setStage] = useState<ProphecyStage>('introduction')
+    const [maxCount, setMaxCount] = useState<number>(5)
+    const [stage, setStage] = useState<ProphecyStage>('prophecy')
     const [pendingInfo, setPendingInfo] = useState<any>(null);
     const [userName, setUserName] = useState<string>('');
     const [traits, setTraits] = useState<string[]>([]);
@@ -119,28 +119,27 @@ export function useProphecyGenerator(){
       }
      
 const processUserInput = useCallback(async (input)=>{
-  if (count<1) setStage('prophecy');
+  console.log('input', stage)
+  if (count<0) setStage('prophecy');
   if(stage === 'introduction') { 
     const countMessage = {role:'system',content:`осталось вопросов ${count} , узнанная информация о собеседнике: ${traits.join(', ')}`};
     const newMessages = [...messages,countMessage,{role:'user',content:input}];
-    console.log(newMessages)
     setMessages(newMessages);
     const result = await generateObject({
-      model: openai(gpt4o, { structuredOutputs: true }),
+      model: openai(gpt4o),
       messages: newMessages,
       schema :intelligentCollectionSchema,
       temperature: 0.7,
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
     });
-    setCount(prev=>prev-1);
-    console.log(result);
       if(result.object.name && !pendingInfo){
         setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
       }
       if(result.object.traits){
         setTraits(result.object.traits)
+        console.log(traits.join(', '))
       }
       if(result.object.command === 'reset'){
         resetState();
@@ -158,41 +157,40 @@ const processUserInput = useCallback(async (input)=>{
       if(result.object.command?.includes('max_questions')){
         const splitted = result.object.command.split('_')
         setMaxCount(+splitted[2])
+        setCount(+splitted[2])
       }
       if(result.object.command === 'prophecy'){
         setStage('prophecy')
+        console.log('смена стадии!')
       }
       setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
+      setCount(prev=>prev-1);
 
       return result.object.response;
-
   }
-  if (stage === 'prophecy' || count < 1){
-    console.log('prophecy')
+  if (stage === 'prophecy' || count < 0){
     const facts = await pendingInfo
     const prophecyMessage = makeProphecyMessage(userName, traits,facts,summary)
-    console.log('pp',prophecyMessage)
+    console.log('prophecyMessage', prophecyMessage)
     const prophecy = await generateObject({
-      model: openai(gpt4o,  {  structuredOutputs: true}),
+      model: openai(gpt4o),
       messages: [prophecyMessage, {role:'user',content:input}],
       schema:prophecySchema,
-      temperature: 0.7,
+      temperature: 0.5,
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
     });
     // Возвращаем пророчество перед сбросом состояния
+    console.log('prophecyAnswer', prophecy)
+
     const prophecyAnswer = prophecy.object.response;
-    
-    // Сбрасываем состояние ПОСЛЕ возврата пророчества
-    resetState();
+    console.log('prophecyAnswer', prophecyAnswer)
+        resetState();
     return prophecyAnswer
   }
   resetState()
   return 'ошибка'
-}
-    
-
-,[pendingInfo, stage, messages, count, userName,])
+},[pendingInfo, stage, messages, count, userName, maxCount, traits, summary])
 
 
 
