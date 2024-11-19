@@ -106,6 +106,7 @@ const useSaluteSTT = () => {
       return newTokenData;
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
+      
       throw err;
     }
   }, []);
@@ -233,6 +234,9 @@ const useSaluteSTT = () => {
         setIsSpeaking(true);
         source.onended = () => {
           setIsSpeaking(false);
+          decoder.reset().catch(err => {
+            console.error('Ошибка при сбросе декодера:', err);
+          });
           resolve();
         };
 
