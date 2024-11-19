@@ -179,6 +179,7 @@ const processUserInput = useCallback(async (input)=>{
       temperature: 0.5,
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
+      maxTokens:4000,
     });
     // Возвращаем пророчество перед сбросом состояния
     console.log('prophecyAnswer', prophecy)

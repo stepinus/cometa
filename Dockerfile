@@ -31,11 +31,8 @@ RUN echo "VITE_APP_OPENAI_API_BASE=https://api.vsegpt.ru/v1/" > .env && \
     echo "VITE_OAUTH_API_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth" >> .env && \
     echo "VITE_RECOGNIZE_API_URL=https://smartspeech.sber.ru/rest/v1/speech:recognize" >> .env
 
-# Собираем проект
-RUN pnpm build
-
 # Открываем порт
 EXPOSE 5173
 
 # Команда запуска
-CMD ["pnpm", "preview", "--host", "0.0.0.0"]
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]
