@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useStore } from './store';
+import { OggOpusDecoderWebWorker } from 'ogg-opus-decoder';
 
 interface SaluteSTTOptions {
   authorizationKey: string;
@@ -64,17 +65,19 @@ const useSaluteSTT = () => {
 
   const calculateIntensity = useCallback(() => {
     if (analyserRef.current) {
-      const bufferLength = analyserRef.current.frequencyBinCount;
+      const bufferLength = analyserRef.current.fftSize;
       const dataArray = new Uint8Array(bufferLength);
       analyserRef.current.getByteTimeDomainData(dataArray);
 
-      const intensity = Math.sqrt(
-        dataArray.reduce((sum, value) => sum + Math.pow((value - 128) / 128, 2), 0) / dataArray.length
-      );
-
+      let sumSquares = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const normalized = (dataArray[i] - 128) / 128;
+        sumSquares += normalized * normalized;
+      }
+      const intensity = Math.sqrt(sumSquares / bufferLength);
       setIntensity(intensity * 3);
     }
-  }, [setIntensity, analyserRef]);
+  }, [setIntensity]);
 
   const fetchOAuthToken = useCallback(async () => {
     try {
@@ -152,6 +155,25 @@ const useSaluteSTT = () => {
     }
   }, [getToken]);
 
+  // Инициализация декодера с использованием Web Worker
+  const decoderRef = useRef<OggOpusDecoderWebWorker | null>(null);
+
+  useEffect(() => {
+    const initializeDecoder = async () => {
+      const decoder = new OggOpusDecoderWebWorker();
+      await decoder.ready;
+      decoderRef.current = decoder;
+    };
+    initializeDecoder();
+    
+    return () => {
+      // Очистка декодера при размонтировании
+      if (decoderRef.current) {
+        decoderRef.current.free();
+      }
+    };
+  }, []);
+
   const synthesizeSpeech = useCallback(async (
     text: string,
     options: SynthesisOptions = {}
@@ -160,11 +182,8 @@ const useSaluteSTT = () => {
       try {
         const currentToken = await getToken();
 
-        const format = options.format || 'wav16';
+        const format = options.format || 'opus';
         const voice = options.voice || 'May_24000';
-
-        const voiceParts = voice.split('_');
-        const sampleRate = options.sampleRate || (voiceParts.length > 1 ? parseInt(voiceParts[1], 10) : 16000);
 
         const queryParams = new URLSearchParams({ format, voice });
 
@@ -183,130 +202,48 @@ const useSaluteSTT = () => {
           throw new Error(`Speech synthesis failed: ${response.statusText}`);
         }
 
-        const AudioContext = window.AudioContext;
-        if (!AudioContext) {
-          throw new Error('Web Audio API is not supported in this browser.');
+        const oggOpusData = await response.arrayBuffer();
+        const decoder = decoderRef.current;
+        if (!decoder) {
+          throw new Error('Decoder is not initialized.');
         }
 
-        const audioContext = new AudioContext({ sampleRate });
+        const decoded = await decoder.decode(new Uint8Array(oggOpusData)); // Добавлено await
+
+        const audioContext = new AudioContext({ sampleRate: decoded.sampleRate });
         audioContextRef.current = audioContext;
-        let startTime = 0;
-        let leftover: Uint8Array | null = null;
-        const reader = response.body.getReader();
-        
+
+        // Создание анализатора и подключение его к AudioContext
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        analyserRef.current = analyser;
+
+        const audioBuffer = audioContext.createBuffer(decoded.channelData.length, decoded.channelData[0].length, decoded.sampleRate);
+        decoded.channelData.forEach((channel, index) => {
+          audioBuffer.copyToChannel(channel, index);
+        });
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(analyser); // Подключение источника к анализатору
+        analyser.connect(audioContext.destination); // Подключение анализатора к выходу
+
+        source.start();
+
         setIsSpeaking(true);
-        const initialBufferDuration = 1; // в секундах
-        let bufferedDuration = 0;
-        const audioBuffers: AudioBuffer[] = [];
-        let activeSourceNodes: AudioBufferSourceNode[] = [];
-        let cumulativeTime = 0;
-
-        const scheduleBuffers = () => {
-          if (bufferedDuration >= initialBufferDuration) {
-            startTime = audioContext.currentTime + 0.2;
-
-            // Воспроизводим накопленные буферы
-            audioBuffers.forEach(buffer => {
-              const source = audioContext.createBufferSource();
-              const analyser = audioContext.createAnalyser();
-              
-              source.buffer = buffer;
-              source.connect(analyser);
-              analyser.connect(audioContext.destination);
-              
-              source.playbackRate.value = 0.8; // Статическая установка скорости
-              
-              analyserRef.current = analyser;
-              activeSourceNodes.push(source);
-
-              source.onended = () => {
-                const index = activeSourceNodes.indexOf(source);
-                if (index > -1) {
-                  activeSourceNodes.splice(index, 1);
-                  if (activeSourceNodes.length === 0) {
-                    setIsSpeaking(false);
-                    if (intensityIntervalRef.current) {
-                      clearInterval(intensityIntervalRef.current);
-                    }
-                    resolve(); // Резолвим промис после окончания воспроизведения
-                  }
-                }
-              };
-
-              source.start(audioContext.currentTime + cumulativeTime);
-              cumulativeTime += buffer.duration / 0.8; // Корректируем время с учетом скорости
-            });
-
-            // Запускаем отслеживание интенсивности
-            if (intensityIntervalRef.current) {
-              clearInterval(intensityIntervalRef.current);
-            }
-            intensityIntervalRef.current = setInterval(calculateIntensity, 50);
-            
-            audioBuffers.length = 0; // Очищаем буфер после воспроизведения
-          }
+        source.onended = () => {
+          setIsSpeaking(false);
+          resolve();
         };
-
-        const readChunk = async () => {
-          const { done, value } = await reader.read();
-          if (done) {
-            // Если все чанки прочитаны, но буфер еще не полон, принудительно воспроизводим
-            if (audioBuffers.length > 0) {
-              scheduleBuffers();
-            }
-            return;
-          }
-
-          let chunk = value!;
-          // Если есть остаток от предыдущего чанка, объединяем его с текущим
-          if (leftover) {
-            const combined = new Uint8Array(leftover.length + chunk.length);
-            combined.set(leftover);
-            combined.set(chunk, leftover.length);
-            chunk = combined;
-            leftover = null;
-          }
-
-          const frameSize = 2; // 16 бит PCM
-          const validLength = Math.floor(chunk.length / frameSize) * frameSize;
-
-          const validChunk = chunk.slice(0, validLength);
-          // Сохраняем остаток для следующего чанка
-          if (validLength < chunk.length) {
-            leftover = chunk.slice(validLength);
-          }
-
-          // Преобразуем Uint8Array в Float32Array
-          const int16Array = new Int16Array(validChunk.buffer);
-          const float32Array = convertInt16ToFloat32(int16Array);
-
-          // Создаем AudioBuffer из полученных данных
-          const audioBuffer = audioContext.createBuffer(1, float32Array.length, sampleRate);
-          audioBuffer.getChannelData(0).set(float32Array);
-          
-          audioBuffers.push(audioBuffer);
-          bufferedDuration += audioBuffer.duration;
-          
-          scheduleBuffers();
-
-          // Читаем следующий чанк
-          await readChunk();
-        };
-
-        // Начинаем чтение и обработку данных
-        readChunk();
 
       } catch (err) {
         setIsSpeaking(false);
-        if (intensityIntervalRef.current) {
-          clearInterval(intensityIntervalRef.current);
-        }
         setError(err instanceof Error ? err : new Error(String(err)));
         reject(err);
       }
     });
-  }, [getToken, calculateIntensity]);
-
+  }, [getToken]);
+  
   // Очистка при размонтировании компонента
   useEffect(() => {
     return () => {
@@ -318,6 +255,20 @@ const useSaluteSTT = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isSpeaking) {
+      intensityIntervalRef.current = setInterval(calculateIntensity, 50); // вызываем каждые 100 мс во время проигрывания
+    } else if (intensityIntervalRef.current) {
+      clearInterval(intensityIntervalRef.current); // останавливаем, когда проигрывание завершено
+    }
+
+    return () => {
+      if (intensityIntervalRef.current) {
+        clearInterval(intensityIntervalRef.current);
+      }
+    };
+  }, [isSpeaking, calculateIntensity]);
 
   return { 
     getToken,
