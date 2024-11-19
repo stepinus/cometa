@@ -4,16 +4,16 @@ import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
 import { z } from 'zod';
 import { set } from 'lodash';
-const gpt4o = 'openai/gpt-4o'
+const gpt4o = 'anthropic/claude-3-5-haiku'
 
 
 
 const intelligentCollectionSchema =  z.object({
-      response: z.string(),
+      response: z.string().nullish(),
       traits: z.string().array(),
-      command: z.string(),
-      name: z.string(),
-      summary: z.string()
+      command: z.string().nullish(),
+      name: z.string().nullish(),
+      summary: z.string().nullish()
     })
 const prophecySchema = z.object({
     response: z.string(),
@@ -120,7 +120,7 @@ export function useProphecyGenerator(){
      
 const processUserInput = useCallback(async (input)=>{
   if (count<1) setStage('prophecy');
-  if(stage === 'introduction' && count > 0) { 
+  if(stage === 'introduction') { 
     const countMessage = {role:'system',content:`осталось вопросов ${count} , узнанная информация о собеседнике: ${traits.join(', ')}`};
     const newMessages = [...messages,countMessage,{role:'user',content:input}];
     console.log(newMessages)
@@ -134,7 +134,7 @@ const processUserInput = useCallback(async (input)=>{
       presencePenalty: 0.8,
     });
     setCount(prev=>prev-1);
-
+    console.log(result);
       if(result.object.name && !pendingInfo){
         setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
@@ -146,20 +146,21 @@ const processUserInput = useCallback(async (input)=>{
         resetState();
       }
       if(result.object.command === 'change_name'){
-        setUserName(result.object.name)
-        setPendingInfo(getInfo(result.object.name));
+        if(result.object.name){
+          setUserName(result.object.name as string)
+          setPendingInfo(getInfo(result.object.name));
+        }
       }
       if(result.object.command === 'skip'){
         setCount(prev=>prev+1)
         return ''
       }
-      if(result.object.command.includes('max_questions')){
+      if(result.object.command?.includes('max_questions')){
         const splitted = result.object.command.split('_')
         setMaxCount(+splitted[2])
       }
       if(result.object.command === 'prophecy'){
         setStage('prophecy')
-        
       }
       setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
 
@@ -172,7 +173,7 @@ const processUserInput = useCallback(async (input)=>{
     const prophecyMessage = makeProphecyMessage(userName, traits,facts,summary)
     console.log('pp',prophecyMessage)
     const prophecy = await generateObject({
-      model: openai('openai/gpt-4o',  {  structuredOutputs: true}),
+      model: openai(gpt4o,  {  structuredOutputs: true}),
       messages: [prophecyMessage, {role:'user',content:input}],
       schema:prophecySchema,
       temperature: 0.7,
@@ -191,7 +192,7 @@ const processUserInput = useCallback(async (input)=>{
 }
     
 
-,[pendingInfo, stage, messages, count])
+,[pendingInfo, stage, messages, count, userName,])
 
 
 
