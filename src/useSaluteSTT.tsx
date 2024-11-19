@@ -41,7 +41,6 @@ const convertFloat32ToInt16 = (float32Array: Float32Array): Int16Array => {
   return int16Array;
 };
 
-// Добавляем функцию convertInt16ToFloat32
 const convertInt16ToFloat32 = (input: Int16Array): Float32Array => {
   const output = new Float32Array(input.length);
   for (let i = 0; i < input.length; i++) {
@@ -78,10 +77,9 @@ const useSaluteSTT = () => {
   }, [setIntensity, analyserRef]);
 
   const fetchOAuthToken = useCallback(async () => {
-    // Внутренняя функция для получения токена
     try {
       const rqUid = uuidv4();
-      const response = await fetch('/salute', {  // Изменено с /oauth
+      const response = await fetch('/salute', {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${import.meta.env.VITE_APP_SALUTE}`,
@@ -110,12 +108,10 @@ const useSaluteSTT = () => {
   }, []);
 
   const getToken = useCallback(() => {
-    // Проверяем валидность существующего токена
     if (tokenData && Date.now() < tokenData.expiresAt) {
       return Promise.resolve(tokenData);
     }
     
-    // Если токен просрочен или отсутствует, получаем новый
     return fetchOAuthToken();
   }, [fetchOAuthToken, tokenData]);
 
@@ -125,13 +121,11 @@ const useSaluteSTT = () => {
     try {
       const currentToken = await getToken();
       
-      // Конвертируем Float32Array в Int16Array (PCM формат)
       const pcmData = convertFloat32ToInt16(audioData);
       
-      // Создаем Blob из PCM данных
       const blob = new Blob([pcmData], { type: 'audio/x-pcm' });
       
-      const response = await fetch('/speech', {  // Изменено с /recognize на /speech
+      const response = await fetch('/speech', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${currentToken.token}`,
@@ -169,7 +163,6 @@ const useSaluteSTT = () => {
         const format = options.format || 'wav16';
         const voice = options.voice || 'May_24000';
 
-        // Извлекаем частоту дискретизации из имени голоса
         const voiceParts = voice.split('_');
         const sampleRate = options.sampleRate || (voiceParts.length > 1 ? parseInt(voiceParts[1], 10) : 16000);
 
@@ -221,6 +214,8 @@ const useSaluteSTT = () => {
               source.connect(analyser);
               analyser.connect(audioContext.destination);
               
+              source.playbackRate.value = 0.8; // Статическая установка скорости
+              
               analyserRef.current = analyser;
               activeSourceNodes.push(source);
 
@@ -239,7 +234,7 @@ const useSaluteSTT = () => {
               };
 
               source.start(audioContext.currentTime + cumulativeTime);
-              cumulativeTime += buffer.duration;
+              cumulativeTime += buffer.duration / 0.8; // Корректируем время с учетом скорости
             });
 
             // Запускаем отслеживание интенсивности
