@@ -105,7 +105,7 @@ export function useProphecyGenerator(){
     const [traits, setTraits] = useState<string[]>([]);
     const [messages, setMessages] = useState<any[]>([initialMessage]);
     const [summary, setSummary] = useState<string>('');
-    const [count, setCount] = useState<number>(0);
+    const [count, setCount] = useState<number>(maxCount);
 
     const resetState = () =>{
         setPendingInfo(null);
@@ -176,9 +176,9 @@ const processUserInput = useCallback(async (input)=>{
       model: openai(gpt4o),
       messages: [prophecyMessage, {role:'user',content:input}],
       schema:prophecySchema,
-      temperature: 0.5,
-      frequencyPenalty: 0.8,
-      presencePenalty: 0.8,
+      temperature: 0.6,
+      frequencyPenalty: 1.5,
+      presencePenalty: 1.5,
       maxTokens:4000,
     });
     // Возвращаем пророчество перед сбросом состояния
