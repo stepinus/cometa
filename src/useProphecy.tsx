@@ -4,7 +4,7 @@ import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
 import { z } from 'zod';
 import { set } from 'lodash';
-const gpt4o = 'anthropic/claude-3-5-haiku'
+const gpt4o = 'openai/gpt-4o-mini'
 
 
 
@@ -21,7 +21,7 @@ const prophecySchema = z.object({
 type ProphecyStage = 'introduction' | 'prophecy' ;
 
 const openai = createOpenAI({
-    compatibility: 'compatible', // strict mode, enable when using the OpenAI API
+    compatibility: 'strict', // strict mode, enable when using the OpenAI API
     baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE,
     apiKey:import.meta.env.VITE_APP_OPENAI_API_KEY,
   });
