@@ -161,7 +161,8 @@ const processUserInput = useCallback(async (input)=>{
         setCount(+splitted[2])
       }
       if(result.object.command === 'prophecy'){
-        setStage('prophecy')
+        setStage('prophecy');
+        setCount(-1);
         console.log('смена стадии!')
       }
       setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
