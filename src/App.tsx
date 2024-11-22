@@ -2,7 +2,7 @@
 import { EdgeTTSClient, ProsodyOptions, OUTPUT_FORMAT } from 'edge-tts-client';
 import Scene from '../sphere/src/App'
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMicVAD, type ReactRealTimeVADOptions } from "@ricky0123/vad-react";
 import { useAudioChunkProcessor } from './useAudioChunkProcessor';
 import useEdgeTTS from './useEdgeSpeech';
@@ -25,7 +25,7 @@ interface VADState {
   start: () => void;
   pause: () => void;
 }
-
+const MAX_SPEECH = 8000;
 export default function ChatPage() {
   const setStatus = useStore((state) => state.setStatus);
   const setIntensity = useStore((state) => state.setIntensity);
@@ -33,6 +33,7 @@ export default function ChatPage() {
   const { synthesizeAndPlay, stop, isPlaying } = useEdgeTTS();
   const [text,setText]  = useState<string>("");
   const [isPending, setIsPending] = useState<boolean>(false);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const {processAudioData} = useAudioChunkProcessor({})
   const {processUserInput} = useProphecyGenerator();
  const  {recognizeSpeech, synthesizeSpeech} = useSaluteSTT();
@@ -47,25 +48,43 @@ export default function ChatPage() {
       setIntensity(intensity*3);
     },
     onSpeechStart: () => {
-        // if(isPending) return;
-
-        // console.log("onSpeechStart"); 
+        if(isPending) return;
+        if (recordingTimerRef.current) {
+          clearTimeout(recordingTimerRef.current);
+        }
+        recordingTimerRef.current = setTimeout(() => {
+          pause();
+          // Перезапускаем VAD через небольшую задержку
+        }, MAX_SPEECH);
     },
     onVADMisfire: () => {
-        // console.log("onVADMisfire");
+        if (recordingTimerRef.current) {
+          clearTimeout(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
     },
     onSpeechEnd: async (frame) => {
         if(isPending) return;
+        if (recordingTimerRef.current) {
+          clearTimeout(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
         setIsPending(true);
         setStatus(false);
-   const result = await recognizeSpeech(frame);
-    const text = result.result.join('.')  
-    handleSubmit(text);
-
+        recognizeSpeech(frame)
+        .then((result) => handleSubmit(result.result.join('.')))
+        .catch((e) => {
+          setIsPending(false);
+          setStatus(true);
+          return
+        }).finally(() => {
+         start();
+        });
     },
-
     positiveSpeechThreshold: 0.7,
     minSpeechFrames: 7,
+    redemptionFrames: 7,
+
   }) as VADState;
 
   async function handleSubmit(inputText:any) {
@@ -85,6 +104,7 @@ export default function ChatPage() {
       setStatus(true);
       setIsPending(false);
     } catch (e) {
+      start();
       setIsPending(false); // Очищаем по
       setStatus(true);
     }

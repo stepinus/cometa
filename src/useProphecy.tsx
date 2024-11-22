@@ -136,6 +136,7 @@ const processUserInput = useCallback(async (input)=>{
       if(result.object.name && !pendingInfo){
         setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
+        if(count < 2) setCount(2);
       }
       if(result.object.traits){
         setTraits(result.object.traits)
