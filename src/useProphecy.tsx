@@ -4,7 +4,7 @@ import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
 import { z } from 'zod';
 import { set } from 'lodash';
-const gpt4o = 'anthropic/claude-3-5-haiku'
+const gpt4o = 'openai/gpt-4o-mini'
 
 
 
@@ -99,7 +99,7 @@ return info;
 }
 export function useProphecyGenerator(){
     const [maxCount, setMaxCount] = useState<number>(5)
-    const [stage, setStage] = useState<ProphecyStage>('prophecy')
+    const [stage, setStage] = useState<ProphecyStage>('introduction');
     const [pendingInfo, setPendingInfo] = useState<any>(null);
     const [userName, setUserName] = useState<string>('');
     const [traits, setTraits] = useState<string[]>([]);
@@ -120,7 +120,6 @@ export function useProphecyGenerator(){
      
 const processUserInput = useCallback(async (input)=>{
   console.log('input', stage)
-  if (count<0) setStage('prophecy');
   if(stage === 'introduction') { 
     const countMessage = {role:'system',content:`осталось вопросов ${count} , узнанная информация о собеседнике: ${traits.join(', ')}`};
     const newMessages = [...messages,countMessage,{role:'user',content:input}];
@@ -133,7 +132,7 @@ const processUserInput = useCallback(async (input)=>{
       frequencyPenalty: 0.8,
       presencePenalty: 0.8,
     });
-      if(result.object.name && !pendingInfo){
+      if(result.object.name && !pendingInfo && !userName){
         setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
         if(count < 2) setCount(2);
