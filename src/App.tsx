@@ -54,13 +54,13 @@ export default function ChatPage() {
         }
         recordingTimerRef.current = setTimeout(() => {
           pause();
-          // Перезапускаем VAD через небольшую задержку
         }, MAX_SPEECH);
     },
     onVADMisfire: () => {
         if (recordingTimerRef.current) {
           clearTimeout(recordingTimerRef.current);
           recordingTimerRef.current = null;
+          start();
         }
     },
     onSpeechEnd: async (frame) => {
