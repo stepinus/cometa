@@ -6,6 +6,7 @@ interface ImportMetaEnv {
     readonly VITE_APP_COMETA_API_KEY: string;
     readonly VITE_APP_DEEPGRAM_API_KEY: string;
     readonly VITE_APP_SALUTE:string;
+    readonly VITE_APP_MODEL:string;
 }
 
 interface ImportMeta {
