@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { initialMessage, makeProphecyMessage, makeProphecyPrompt } from './prophecy/prompts';
 import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
@@ -103,8 +103,13 @@ export function useProphecyGenerator(){
     const [messages, setMessages] = useState<any[]>([initialMessage]);
     const [summary, setSummary] = useState<string>('');
     const [count, setCount] = useState<number>(maxCount);
+    const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
 
     const resetState = () =>{
+        if (inactivityTimer.current) {
+            clearTimeout(inactivityTimer.current);
+            inactivityTimer.current = null;
+        }
         setPendingInfo(null);
         setStage('introduction');
         setMessages([initialMessage])
@@ -112,10 +117,17 @@ export function useProphecyGenerator(){
         setTraits([]);
         setSummary('');
         setCount(maxCount)
-   
-      }
+    }
      
 const processUserInput = useCallback(async (input)=>{
+  // Reset inactivity timer
+  if (inactivityTimer.current) {
+      clearTimeout(inactivityTimer.current);
+  }
+  inactivityTimer.current = setTimeout(() => {
+      resetState();
+  }, 5 * 60 * 1000); // 5 minutes in milliseconds
+
   console.log('count', count)
   if(stage === 'introduction' && count > 0){ 
    const updatedMessages = messages.map((message, i)=>(i === 0 ? {role:'system',content: message.content + `\n ВНИМАНИЕ!!! ВАЖНАЯ ИНФОРМАЦИЯ : У ТЕБЯ ОСТАЛОСЬ ${count} ВОПРОСОВ! . ВЫЯВЛЕННЫЕ ЧЕРТЫ ХАРАКТЕРА: ${traits.join(',')}, ИМЯ СОБЕСЕДНИКА: ${userName}` } : message));
@@ -191,6 +203,12 @@ const processUserInput = useCallback(async (input)=>{
 
 useEffect(()=>{
   setCount(maxCount)
+  // Clear timer on component unmount
+  return () => {
+      if (inactivityTimer.current) {
+          clearTimeout(inactivityTimer.current);
+      }
+  }
 },[])
 return {processUserInput, stage, resetState}
 }
