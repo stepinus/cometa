@@ -25,7 +25,7 @@ interface VADState {
   start: () => void;
   pause: () => void;
 }
-const MAX_SPEECH = 8000;
+const MAX_SPEECH = 12000;
 export default function ChatPage() {
   const setStatus = useStore((state) => state.setStatus);
   const setIntensity = useStore((state) => state.setIntensity);
@@ -54,6 +54,7 @@ export default function ChatPage() {
         }
         recordingTimerRef.current = setTimeout(() => {
           pause();
+          console.log('pause');
         }, MAX_SPEECH);
     },
     onVADMisfire: () => {
@@ -101,6 +102,7 @@ export default function ChatPage() {
           await synthesizeSpeech(response);
         }
         console.log('miss!')
+        start();
       setStatus(true);
       setIsPending(false);
     } catch (e) {

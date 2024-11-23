@@ -3,7 +3,6 @@ import { initialMessage, makeProphecyMessage, makeProphecyPrompt } from './proph
 import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
 import { z } from 'zod';
-import { set } from 'lodash';
 const gpt4o = import.meta.env.VITE_APP_MODEL;
 
 
@@ -13,7 +12,6 @@ const intelligentCollectionSchema =  z.object({
       traits: z.string().array(),
       command: z.string().nullish(),
       name: z.string().nullish(),
-      summary: z.string().nullish()
     })
 const prophecySchema = z.object({
     response: z.string(),
@@ -45,7 +43,6 @@ const openai = createOpenAI({
 		})
 		.catch((err) => {
 			console.log(err);
-
 			error = err.detail;
 			return null;
 		});
@@ -98,7 +95,7 @@ const info = await getInfoCompletion(token, userName)
 return info;
 }
 export function useProphecyGenerator(){
-    const [maxCount, setMaxCount] = useState<number>(5)
+    const [maxCount, setMaxCount] = useState<number>(6)
     const [stage, setStage] = useState<ProphecyStage>('introduction');
     const [pendingInfo, setPendingInfo] = useState<any>(null);
     const [userName, setUserName] = useState<string>('');
@@ -119,24 +116,28 @@ export function useProphecyGenerator(){
       }
      
 const processUserInput = useCallback(async (input)=>{
-  console.log('input', stage)
-  if(stage === 'introduction') { 
-    const countMessage = {role:'system',content:`осталось вопросов ${count} , узнанная информация о собеседнике: ${traits.join(', ')}`};
-    const newMessages = [...messages,countMessage,{role:'user',content:input}];
+  console.log('count', count)
+  if(stage === 'introduction' && count > 0){ 
+   const updatedMessages = messages.map((message, i)=>(i === 0 ? {role:'system',content: message.content + `\n ВНИМАНИЕ!!! ВАЖНАЯ ИНФОРМАЦИЯ : У ТЕБЯ ОСТАЛОСЬ ${count} ВОПРОСОВ! . ВЫЯВЛЕННЫЕ ЧЕРТЫ ХАРАКТЕРА: ${traits.join(',')}, ИМЯ СОБЕСЕДНИКА: ${userName}` } : message));
+    const newMessages = [...updatedMessages,{role:'user',content:input}];
     setMessages(newMessages);
     const result = await generateObject({
       model: openai(gpt4o),
       messages: newMessages,
       schema :intelligentCollectionSchema,
-      temperature: 0.7,
-      frequencyPenalty: 0.8,
-      presencePenalty: 0.8,
+      temperature: 0.8,
+      frequencyPenalty: 0.9,
+      presencePenalty: 0.9,
     });
+
+    setCount(prev=>prev-1);
+
       if(result.object.name && !pendingInfo && !userName){
         setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
         if(count < 2) setCount(2);
       }
+
       if(result.object.traits){
         setTraits(result.object.traits)
         console.log(traits.join(', '))
@@ -150,10 +151,6 @@ const processUserInput = useCallback(async (input)=>{
           setPendingInfo(getInfo(result.object.name));
         }
       }
-      if(result.object.command === 'skip'){
-        setCount(prev=>prev+1)
-        return ''
-      }
       if(result.object.command?.includes('max_questions')){
         const splitted = result.object.command.split('_')
         setMaxCount(+splitted[2])
@@ -161,21 +158,18 @@ const processUserInput = useCallback(async (input)=>{
       }
       if(result.object.command === 'prophecy'){
         setStage('prophecy');
-        setCount(-1);
-        console.log('смена стадии!')
+        setCount(0);
       }
       setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
-      setCount(prev=>prev-1);
-
+ 
       return result.object.response;
   }
-  if (stage === 'prophecy' || count < 0){
+  if (stage === 'prophecy' || count <= 0){
     const facts = await pendingInfo
-    const prophecyMessage = makeProphecyMessage(userName, traits,facts,summary)
-    console.log('prophecyMessage', prophecyMessage)
+    const prophecyMessages = messages.map((message,i)=> i===0 ? makeProphecyMessage(userName, traits,facts,summary) : message)
     const prophecy = await generateObject({
       model: openai(gpt4o),
-      messages: [prophecyMessage, {role:'user',content:input}],
+      messages: [...prophecyMessages, {role:'user',content:input}],
       schema:prophecySchema,
       temperature: 0.6,
       frequencyPenalty: 1.5,
@@ -183,7 +177,6 @@ const processUserInput = useCallback(async (input)=>{
       maxTokens:4000,
     });
     // Возвращаем пророчество перед сбросом состояния
-    console.log('prophecyAnswer', prophecy)
 
     const prophecyAnswer = prophecy.object.response;
     console.log('prophecyAnswer', prophecyAnswer)
