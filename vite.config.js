@@ -33,6 +33,10 @@ export default defineConfig({
         {
           src: 'node_modules/onnxruntime-web/dist/*.*',
           dest: './'
+        },
+        {
+        src: "node_modules/@ricky0123/vad-web/dist/*.onnx",
+        dest: "./[name][ext]",
         }
       ]
     })
