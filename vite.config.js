@@ -34,12 +34,11 @@ export default defineConfig({
           src: 'node_modules/onnxruntime-web/dist/*.*',
           dest: './'
         }
-        
       ]
     })
   ],
   optimizeDeps: {
-    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util",'onnxruntime-web'],
+    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util", 'onnxruntime-web'],
   },
   server: {
     proxy: {
@@ -62,10 +61,5 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/synthesize/, '/rest/v1/text:synthesize')
       }
     }
-  },
-  resolve: {
-    alias: {
-      "@shaders": "/src/shaders/",
-    },
-  },
+  }
 });
