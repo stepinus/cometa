@@ -90,16 +90,12 @@ export default function ChatPage() {
   const handleWakeWord = () => {
     console.log('Wake word detected!');
     setIsAwake(true);
-    pause(); // Останавливаем VAD временно
-    
+    start();
+
     // Очищаем предыдущие таймеры
     if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
-    
-    // Запускаем VAD снова после короткой паузы
-    setTimeout(() => {
-      start();
-      startSleepTimer(); // Запускаем таймер сна сразу после активации
-    }, 500);
+    startSleepTimer(); // Запускаем таймер сна сразу после активации
+
   };
 
   const handleSleep = () => {
