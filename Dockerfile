@@ -35,7 +35,7 @@ RUN pnpm run build
 # Этап продакшена
 FROM nginx:stable-alpine as production-stage
 COPY --from=build-stage /app/dist /app
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=clone-stage /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN chmod -R 777 /app
 
