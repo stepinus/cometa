@@ -27,7 +27,7 @@ export default defineConfig({
           dest: './'
         },
         {
-          src: 'node_modules/@ricky0123/vad-web/dist/silero_vad.onnx',
+          src: 'public/silero_vad.onnx',
           dest: './'
         },
         {
