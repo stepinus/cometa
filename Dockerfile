@@ -32,6 +32,9 @@ RUN echo "VITE_APP_OPENAI_API_BASE=https://api.vsegpt.ru/v1/" > .env && \
 RUN rm -rf dist
 RUN pnpm run build
 
+# Копируем silero_vad.onnx из репозитория в dist
+RUN cp silero_vad.onnx dist/
+
 # Этап продакшена
 FROM nginx:stable-alpine as production-stage
 COPY --from=build-stage /app/dist /app
