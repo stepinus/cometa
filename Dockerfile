@@ -32,12 +32,13 @@ RUN echo "VITE_APP_OPENAI_API_BASE=https://api.vsegpt.ru/v1/" > .env && \
 RUN rm -rf dist
 RUN pnpm run build
 
-# Копируем silero_vad.onnx из репозитория в dist
-RUN cp silero_vad.onnx dist/
+# Копируем silero_vad.onnx из node_modules в отдельную директорию
+# RUN cp node_modules/.pnpm/@ricky0123+vad-web@0.0.19/node_modules/@ricky0123/vad-web/dist/silero_vad.onnx /app/models/
 
 # Этап продакшена
 FROM nginx:stable-alpine as production-stage
 COPY --from=build-stage /app/dist /app
+COPY --from=build-stage /app/models /app/models
 COPY --from=clone-stage /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN chmod -R 777 /app
