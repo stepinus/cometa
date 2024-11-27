@@ -173,8 +173,11 @@ const processUserInput = useCallback(async (input)=>{
         setCount(0);
       }
       setMessages(prev=>[...prev,{role:'assistant',content:result.object.response}])
- 
-      return result.object.response;
+
+      return {
+        text: result.object.response,
+        isLastProphecy: false
+      };
   }
   if (stage === 'prophecy' || count <= 0){
     const facts = await pendingInfo
@@ -188,15 +191,20 @@ const processUserInput = useCallback(async (input)=>{
       presencePenalty: 1.5,
       maxTokens:4000,
     });
-    // Возвращаем пророчество перед сбросом состояния
 
     const prophecyAnswer = prophecy.object.response;
     console.log('prophecyAnswer', prophecyAnswer)
         resetState();
-    return prophecyAnswer
+    return {
+      text: prophecyAnswer,
+      isLastProphecy: true
+    };
   }
-  resetState()
-  return 'ошибка'
+  resetState();
+  return {
+    text: 'ошибка',
+    isLastProphecy: false
+  };
 },[pendingInfo, stage, messages, count, userName, maxCount, traits, summary])
 
 

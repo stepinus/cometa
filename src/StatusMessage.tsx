@@ -3,12 +3,20 @@ import React, { useState, useRef, useEffect } from 'react';
 interface StatusMessageProps {
   isPending: boolean;
   isPlaying: boolean;
+  isAwake: boolean;
 }
 
-export const StatusMessage: React.FC<StatusMessageProps> = ({ isPending, isPlaying }) => {
+export const StatusMessage: React.FC<StatusMessageProps> = ({ isPending, isPlaying, isAwake }) => {
   const [isVisible, setIsVisible] = useState(false);
   const requestRef = useRef<number>();
-  const text = isPending ? "Ожидайте ответа" : "Говорите, Предсказательница слушает вас";
+  
+  const getText = () => {
+    if (!isAwake) return "Скажите «Привет!» чтобы начать";
+    if (isPending) return "Ожидайте ответа";
+    return "Говорите, Предсказательница слушает вас";
+  };
+
+  const text = getText();
 
   useEffect(() => {
     setIsVisible(false);
