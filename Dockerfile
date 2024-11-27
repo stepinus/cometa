@@ -1,10 +1,10 @@
 # Этап клонирования репозитория с последней версией
-FROM alpine/git as clone-stage
+FROM alpine/git AS clone-stage
 WORKDIR /app
 ADD https://www.google.com /time.now
 RUN git clone https://github.com/stepinus/cometa.git .
 
-FROM node:18-alpine as build-stage
+FROM node:18-alpine AS build-stage
 
 # Устанавливаем pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -32,12 +32,15 @@ RUN echo "VITE_APP_OPENAI_API_BASE=https://api.vsegpt.ru/v1/" > .env && \
 RUN rm -rf dist
 RUN pnpm run build
 
-# Копируем silero_vad.onnx из node_modules в отдельную директорию
-# RUN cp node_modules/.pnpm/@ricky0123+vad-web@0.0.19/node_modules/@ricky0123/vad-web/dist/silero_vad.onnx /app/models/
+# Копируем необходимые файлы моделей
+RUN mkdir -p /app/models
+RUN cp node_modules/@ricky0123/vad-web/dist/silero_vad.onnx /app/silero_vad.onnx
+RUN cp node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js /app/vad.worklet.bundle.min.js
 
-# Этап продакшена
-FROM nginx:stable-alpine as production-stage
+FROM nginx:stable-alpine AS production-stage
 COPY --from=build-stage /app/dist /app
+COPY --from=build-stage /app/silero_vad.onnx /app/silero_vad.onnx
+COPY --from=build-stage /app/vad.worklet.bundle.min.js /app/vad.worklet.bundle.min.js
 COPY --from=clone-stage /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN chmod -R 777 /app
