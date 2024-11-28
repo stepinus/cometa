@@ -58,8 +58,9 @@ export default function ChatPage() {
     
     switch (newState) {
       case AppState.SLEEPING:
-        setStatus(false);
-        pause();
+        // Temporarily redirect to LISTENING instead of SLEEPING
+        setStatus(true);
+        start();
         break;
       case AppState.LISTENING:
         setStatus(true);
@@ -87,7 +88,7 @@ export default function ChatPage() {
   const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
-      if (appState === AppState.SLEEPING || appState === AppState.PENDING || appState === AppState.SPEAKING) return;
+      if (appState === AppState.PENDING || appState === AppState.SPEAKING) return;
       
       const intensity = Math.sqrt(
         audioData.reduce((sum, value) => sum + value * value, 0) / audioData.length
