@@ -36,7 +36,7 @@ export default function ChatPage() {
   const setIntensity = useStore((state) => state.setIntensity);
   const status = useStore((state) => state.status);
   const [text, setText] = useState<string>("");
-  const [appState, setAppState] = useState<AppState>(AppState.SLEEPING);
+  const [appState, setAppState] = useState<AppState>(AppState.LISTENING);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxSpeechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
