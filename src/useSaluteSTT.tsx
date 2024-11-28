@@ -196,10 +196,11 @@ const useSaluteSTT = () => {
 
         const headers = {
           'Authorization': `Bearer ${currentToken.token}`,
-          'Content-Type': 'application/ssml',
+          'Content-Type': 'application/text',
         };
 
         console.log('Отправка запроса на синтез речи');
+        console.log('текст', text)
         const response = await fetch(`/synthesize?${queryParams.toString()}`, {
           method: 'POST',
           headers,
@@ -207,6 +208,9 @@ const useSaluteSTT = () => {
         });
 
         if (!response.ok || !response.body) {
+          if (response.status === 429) {
+            throw new Error('Превышен лимит запросов. Пожалуйста, подождите некоторое время и попробуйте снова.');
+          }
           console.error(`Speech synthesis failed: ${response.statusText}`);
           throw new Error(`Speech synthesis failed: ${response.statusText}`);
         }

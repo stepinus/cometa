@@ -1,23 +1,23 @@
-# Этап клонирования репозитория с последней версией
-FROM alpine/git AS clone-stage
-WORKDIR /app
-ADD https://www.google.com /time.now
-RUN git clone https://github.com/stepinus/cometa.git .
+FROM node:18-alpine
 
-FROM node:18-alpine AS build-stage
+# Устанавливаем git
+RUN apk add --no-cache git
 
 # Устанавливаем pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Копируем файлы из этапа клонирования
-COPY --from=clone-stage /app .
+# Клонируем репозиторий
+RUN git clone https://github.com/stepinus/cometa.git .
 
 # Устанавливаем зависимости
 RUN pnpm install --frozen-lockfile
 
-# Создаем .env файл со всеми переменными окружения
+# Добавляем express, http-proxy-middleware и dotenv
+RUN pnpm add express http-proxy-middleware dotenv
+
+# Создаем .env файл
 RUN echo "VITE_APP_OPENAI_API_BASE=https://api.vsegpt.ru/v1/" > .env && \
     echo "VITE_APP_OPENAI_API_BASE2=https://api.vsegpt.ru/v1/" >> .env && \
     echo "VITE_APP_OPENAI_API_KEY2=sk-or-vv-5079af64d63ecffa01709d6f64e1255aa4c54faad180bccaee4c9403233c8833" >> .env && \
@@ -29,21 +29,14 @@ RUN echo "VITE_APP_OPENAI_API_BASE=https://api.vsegpt.ru/v1/" > .env && \
     echo "VITE_RECOGNIZE_API_URL=https://smartspeech.sber.ru/rest/v1/speech:recognize" >> .env && \
     echo "VITE_APP_MODEL=anthropic/claude-3-5-haiku" >> .env
 
-RUN rm -rf dist
+# Собираем приложение
 RUN pnpm run build
 
-# Копируем необходимые файлы моделей
-RUN mkdir -p /app/models
-RUN cp node_modules/@ricky0123/vad-web/dist/silero_vad.onnx /app/silero_vad.onnx
-RUN cp node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js /app/vad.worklet.bundle.min.js
+# Создаем package.json с type: module
+RUN echo '{"type": "module"}' > package.json
 
-FROM nginx:stable-alpine AS production-stage
-COPY --from=build-stage /app/dist /app
-COPY --from=build-stage /app/silero_vad.onnx /app/silero_vad.onnx
-COPY --from=build-stage /app/vad.worklet.bundle.min.js /app/vad.worklet.bundle.min.js
-COPY --from=clone-stage /app/nginx.conf /etc/nginx/conf.d/default.conf
+# Копируем файл сервера
+COPY server.js .
 
-RUN chmod -R 777 /app
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+CMD ["node", "server.js"]

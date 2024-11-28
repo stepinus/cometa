@@ -22,27 +22,23 @@ export default defineConfig({
     }),
     viteStaticCopy({
       targets: [
-        {
-          src: 'node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js',
-          dest: './'
-        },
-        {
-          src: 'public/silero_vad.onnx',
-          dest: './'
-        },
-        {
-          src: 'node_modules/onnxruntime-web/dist/*.*',
-          dest: './'
-        },
-        {
-        src: "node_modules/@ricky0123/vad-web/dist/*.onnx",
-        dest: "./[name][ext]",
-        }
+          {
+            src: 'node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js',
+            dest: './'
+          },
+          {
+            src: 'node_modules/@ricky0123/vad-web/dist/silero_vad.onnx',
+            dest: './'
+          },
+          {
+            src: 'node_modules/onnxruntime-web/dist/*.wasm',
+            dest: './'
+          }
       ]
     })
   ],
   optimizeDeps: {
-    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util", 'onnxruntime-web'],
+    exclude: ["@ricky0123/vad-react", "@ricky0123/vad-web", 'onnxruntime-web'],
   },
   server: {
     proxy: {

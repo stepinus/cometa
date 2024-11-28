@@ -5,10 +5,8 @@ import { PICOVOICE_CONFIG } from './picovoiceConfig';
 
 import { useState, useEffect, useRef } from "react";
 import { useMicVAD, type ReactRealTimeVADOptions } from "@ricky0123/vad-react";
-import { useAudioChunkProcessor } from './useAudioChunkProcessor';
 import { useStore } from './store';
 import { Leva } from 'leva';
-import { useCallback } from 'react';
 import { StatusMessage } from './StatusMessage';
 import { useProphecyGenerator } from './useProphecy';
 import  useSaluteSTT  from './useSaluteSTT';
@@ -35,10 +33,9 @@ export default function ChatPage() {
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sleepTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const {processUserInput, stage} = useProphecyGenerator();
-  const {processAudioData} = useAudioChunkProcessor({})
   const {recognizeSpeech, synthesizeSpeech} = useSaluteSTT();
   const {listening, userSpeaking, pause, start} = useMicVAD({
-    startOnLoad: false,
+    startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
       if (!isAwake || isPlaying) return;
             // Расчет интенсивности через среднеквадратичное значение (RMS)
@@ -49,8 +46,7 @@ export default function ChatPage() {
             setIntensity(intensity*3);
     },
     onSpeechStart: () => {
-      if (!isAwake || isPending || isPlaying) return;
-      
+      if (!isAwake || isPending || isPlaying) return;   
       // Очищаем таймер засыпания при начале речи
       if (sleepTimeoutRef.current) {
         clearTimeout(sleepTimeoutRef.current);
@@ -70,7 +66,6 @@ export default function ChatPage() {
       setIsPending(false);
       setStatus(true);
       startSleepTimer();
-      return
     }).finally(() => {
      start();
     });
@@ -90,18 +85,13 @@ export default function ChatPage() {
   const handleWakeWord = () => {
     console.log('Wake word detected!');
     setIsAwake(true);
-    start();
-
     // Очищаем предыдущие таймеры
     if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
     startSleepTimer(); // Запускаем таймер сна сразу после активации
-
   };
 
   const handleSleep = () => {
-    console.log('Going to sleep mode');
     setIsAwake(false);
-    pause();
     if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
   };
 
@@ -118,7 +108,7 @@ export default function ChatPage() {
 
   const porcupineKeyword = { 
     base64: PICOVOICE_CONFIG.keywordBase64,
-    label: "wakeword"
+    label: "privet"
   };
   const porcupineModel = { 
     base64: PICOVOICE_CONFIG.contextBase64 
@@ -141,6 +131,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (keywordDetection !== null) {
+      console.log('Wake word detected!', keywordDetection);
       handleWakeWord();
     }
   }, [keywordDetection]);
@@ -158,48 +149,29 @@ export default function ChatPage() {
 
   async function handleSubmit(inputText:any) {
     try {
-      if(inputText.length < 4) {
-        setStatus(true);
-        return;
-      }
-      setIsPending(true);
-      pause(); // Останавливаем VAD на время обработки и воспроизведения
       const response = await processUserInput(inputText);
-      
       if (response && response.text) {
         setIsPending(false);
         setIsPlaying(true);
+        setStatus(true);
         await synthesizeSpeech(response.text);
         setIsPlaying(false);
         
         if (response.isLastProphecy) {
           handleSleep();
         } else {
-          start(); // Запускаем VAD снова только если это не последнее сообщение
           startSleepTimer(); // Запускаем таймер засыпания после воспроизведения
         }
       }
-      
-      setText('');
-      setStatus(false);
-    } catch (error) {
+          } catch (error) {
       console.error('Error processing input:', error);
       setIsPending(false);
       setIsPlaying(false);
       setStatus(false);
-      start(); // В случае ошибки тоже возобновляем VAD
       startSleepTimer();
     }
   }
 
-  // Эффект для управления VAD при изменении isPlaying
-  useEffect(() => {
-    if (isPlaying) {
-      pause();
-    } else if (isAwake) {
-      start();
-    }
-  }, [isPlaying, isAwake, pause, start]);
 
   return (
     <div className="w-screen h-screen">
