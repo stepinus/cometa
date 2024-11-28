@@ -11,6 +11,13 @@ import { StatusMessage } from './StatusMessage';
 import { useProphecyGenerator } from './useProphecy';
 import  useSaluteSTT  from './useSaluteSTT';
 
+enum AppState {
+  SLEEPING = 'SLEEPING',
+  LISTENING = 'LISTENING',
+  PENDING = 'PENDING',
+  SPEAKING = 'SPEAKING'
+}
+
 interface VADState {
   loading: boolean;
   listening: boolean;
@@ -20,85 +27,147 @@ interface VADState {
   pause: () => void;
 }
 
-
-const MAX_SPEECH = 12000;
+const MAX_SPEECH = 10000; // 10 seconds
+const SLEEP_TIMEOUT = 6000; // 10 seconds
+const LISTENING_TIMEOUT = 8000; // 8 seconds
 
 export default function ChatPage() {
   const setStatus = useStore((state) => state.setStatus);
   const setIntensity = useStore((state) => state.setIntensity);
   const status = useStore((state) => state.status);
-  const [text,setText]  = useState<string>("");
-  const [isPending, setIsPending] = useState<boolean>(false);
+  const [text, setText] = useState<string>("");
+  const [appState, setAppState] = useState<AppState>(AppState.SLEEPING);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const sleepTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const {processUserInput, stage} = useProphecyGenerator();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxSpeechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearTimeouts = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (maxSpeechTimeoutRef.current) {
+      clearTimeout(maxSpeechTimeoutRef.current);
+      maxSpeechTimeoutRef.current = null;
+    }
+  };
+
+  const handleStateTransition = (newState: AppState) => {
+    clearTimeouts();
+    setAppState(newState);
+    
+    switch (newState) {
+      case AppState.SLEEPING:
+        setStatus(false);
+        pause();
+        break;
+      case AppState.LISTENING:
+        setStatus(true);
+        start();
+        // Start timeout to go back to sleep if no speech detected
+        timeoutRef.current = setTimeout(() => {
+          if (appState === AppState.LISTENING) {
+            handleStateTransition(AppState.SLEEPING);
+          }
+        }, SLEEP_TIMEOUT);
+        break;
+      case AppState.PENDING:
+        setStatus(false);
+        pause();
+        break;
+      case AppState.SPEAKING:
+        setStatus(true);
+        break;
+    }
+  };
+
   const {recognizeSpeech, synthesizeSpeech} = useSaluteSTT();
+  const {processUserInput} = useProphecyGenerator();
+
   const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
-      if (!isAwake || isPlaying) return;
-            // Расчет интенсивности через среднеквадратичное значение (RMS)
-            const intensity = Math.sqrt(
-              audioData.reduce((sum, value) => sum + value * value, 0) / audioData.length
-            );
-            // Обновление интенсивности в глобальном store
-            setIntensity(intensity*3);
+      if (appState === AppState.SLEEPING || appState === AppState.PENDING || appState === AppState.SPEAKING) return;
+      
+      const intensity = Math.sqrt(
+        audioData.reduce((sum, value) => sum + value * value, 0) / audioData.length
+      );
+      setIntensity(intensity * 3);
     },
     onSpeechStart: () => {
-      if (!isAwake || isPending || isPlaying) return;   
-      // Очищаем таймер засыпания при начале речи
-      if (sleepTimeoutRef.current) {
-        clearTimeout(sleepTimeoutRef.current);
-      }
+      if (appState !== AppState.LISTENING) return;
+      clearTimeouts();
+      
+      // Устанавливаем таймер максимальной длительности речи
+      maxSpeechTimeoutRef.current = setTimeout(() => {
+        if (appState === AppState.LISTENING) {
+          pause(); // Pause VAD
+          setTimeout(() => {
+            if (appState === AppState.LISTENING) {
+              start(); // Resume VAD
+            }
+          }, 100); // Small delay before resuming
+        }
+      }, MAX_SPEECH);
     },
     onSpeechEnd: async (frame) => {
-      if (!isAwake || isPending || isPlaying) return;
-    if (recordingTimerRef.current) {
-      clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-    setIsPending(true);
-    setStatus(false);
-    recognizeSpeech(frame)
-    .then((result) => handleSubmit(result.result.join('.')))
-    .catch((e) => {
-      setIsPending(false);
-      setStatus(true);
-      startSleepTimer();
-    }).finally(() => {
-     start();
-    });
+      if (appState !== AppState.LISTENING) return;
+      
+      // Очищаем таймер максимальной длительности речи
+      if (maxSpeechTimeoutRef.current) {
+        clearTimeout(maxSpeechTimeoutRef.current);
+        maxSpeechTimeoutRef.current = null;
+      }
+      
+      handleStateTransition(AppState.PENDING);
+      try {
+        const recognizedText = await recognizeSpeech(frame);
+        await handleSubmit(recognizedText.result.join('.'));
+      } catch (e) {
+        console.error('Speech recognition error:', e);
+        handleStateTransition(AppState.LISTENING);
+      }
     },
     onVADMisfire: () => {
-      if (!isAwake || isPlaying) return;
-      
+      if (appState !== AppState.LISTENING) return;
     },
     positiveSpeechThreshold: 0.7,
     minSpeechFrames: 7,
     redemptionFrames: 7,
-
   }) as VADState;
-
-  const [isAwake, setIsAwake] = useState<boolean>(false);
 
   const handleWakeWord = () => {
     console.log('Wake word detected!');
-    setIsAwake(true);
-    // Очищаем предыдущие таймеры
-    if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
-    startSleepTimer(); // Запускаем таймер сна сразу после активации
+    handleStateTransition(AppState.LISTENING);
   };
 
-  const handleSleep = () => {
-    setIsAwake(false);
-    if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
-  };
+  async function handleSubmit(inputText: string) {
+    try {
+      const response = await processUserInput(inputText);
+      if (response && response.text) {
+        handleStateTransition(AppState.SPEAKING);
+        setIsPlaying(true);
+        await synthesizeSpeech(response.text);
+        setIsPlaying(false);
+        
+        if (response.isLastProphecy) {
+          handleStateTransition(AppState.SLEEPING);
+        } else {
+          handleStateTransition(AppState.LISTENING);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing input:', error);
+      setIsPlaying(false);
+      handleStateTransition(AppState.SLEEPING);
+    }
+  }
 
+  // Porcupine wake word detection setup
   const {
     keywordDetection,
     isLoaded,
-    isListening,
+    isListening: isPorcupineListening,
     error,
     init,
     start: startPorcupine,
@@ -106,12 +175,12 @@ export default function ChatPage() {
     release
   } = usePorcupine();
 
-  const porcupineKeyword = { 
+  const porcupineKeyword = {
     base64: PICOVOICE_CONFIG.keywordBase64,
     label: "privet"
   };
-  const porcupineModel = { 
-    base64: PICOVOICE_CONFIG.contextBase64 
+  const porcupineModel = {
+    base64: PICOVOICE_CONFIG.contextBase64
   };
 
   useEffect(() => {
@@ -120,12 +189,13 @@ export default function ChatPage() {
       porcupineKeyword,
       porcupineModel
     ).then(() => {
-      startPorcupine(); // Сразу начинаем слушать wake word
+      startPorcupine();
     });
     
     return () => {
       stopPorcupine();
       release();
+      clearTimeouts();
     };
   }, []);
 
@@ -136,51 +206,14 @@ export default function ChatPage() {
     }
   }, [keywordDetection]);
 
-  const startSleepTimer = () => {
-    if (sleepTimeoutRef.current) {
-      clearTimeout(sleepTimeoutRef.current);
-    }
-    sleepTimeoutRef.current = setTimeout(() => {
-      if (!isPending && !isPlaying) {
-        handleSleep();
-      }
-    }, 10000); // 10 секунд на засыпание
-  };
-
-  async function handleSubmit(inputText:any) {
-    try {
-      const response = await processUserInput(inputText);
-      if (response && response.text) {
-        setIsPending(false);
-        setIsPlaying(true);
-        setStatus(true);
-        await synthesizeSpeech(response.text);
-        setIsPlaying(false);
-        
-        if (response.isLastProphecy) {
-          handleSleep();
-        } else {
-          startSleepTimer(); // Запускаем таймер засыпания после воспроизведения
-        }
-      }
-          } catch (error) {
-      console.error('Error processing input:', error);
-      setIsPending(false);
-      setIsPlaying(false);
-      setStatus(false);
-      startSleepTimer();
-    }
-  }
-
-
   return (
     <div className="w-screen h-screen">
       <Leva hidden/>
       <Scene />
       <StatusMessage 
-        isPending={isPending} 
+        isPending={appState === AppState.PENDING} 
         isPlaying={isPlaying} 
-        isAwake={isAwake} 
+        isAwake={appState !== AppState.SLEEPING} 
       />
       <div className="mt-4 flex items-center">
         <input 
@@ -191,7 +224,7 @@ export default function ChatPage() {
           className="border p-2 mr-2"
         />
         <button 
-          onClick={() => handleSubmit({text})} 
+          onClick={() => handleSubmit(text)} 
           className="bg-blue-500 text-white p-2 rounded"
         >
           Отправить

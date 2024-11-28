@@ -25,21 +25,21 @@ export default defineConfig({
       targets: [
           {
             src: 'node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js',
-            dest: 'public'
+            dest: './',
           },
           {
             src: 'node_modules/@ricky0123/vad-web/dist/silero_vad.onnx',
-            dest: 'public'
+            dest: './'
           },
           {
             src: 'node_modules/onnxruntime-web/dist/*.wasm',
-            dest: 'public'
+            dest: './'
           }
       ]
     })
   ],
   optimizeDeps: {
-    exclude: ["@ricky0123/vad-react", "@ricky0123/vad-web", 'onnxruntime-web'],
+    exclude: ['onnxruntime-web'],
   },
   server: {
     proxy: {
