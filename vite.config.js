@@ -5,6 +5,7 @@ import {viteStaticCopy} from "vite-plugin-static-copy";
 
 export default defineConfig({
   base: "/",
+  publicDir: "public",
   build: {
     rollupOptions: {
       output: {
@@ -24,15 +25,15 @@ export default defineConfig({
       targets: [
           {
             src: 'node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js',
-            dest: './'
+            dest: 'public'
           },
           {
             src: 'node_modules/@ricky0123/vad-web/dist/silero_vad.onnx',
-            dest: './'
+            dest: 'public'
           },
           {
             src: 'node_modules/onnxruntime-web/dist/*.wasm',
-            dest: './'
+            dest: 'public'
           }
       ]
     })
