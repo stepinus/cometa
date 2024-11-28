@@ -12,7 +12,7 @@ import { useProphecyGenerator } from './useProphecy';
 import  useSaluteSTT  from './useSaluteSTT';
 
 enum AppState {
-  SLEEPING = 'SLEEPING',
+  SLEEPING = 'LISTENING',
   LISTENING = 'LISTENING',
   PENDING = 'PENDING',
   SPEAKING = 'SPEAKING'
