@@ -214,7 +214,7 @@ export default function ChatPage() {
       <StatusMessage 
         isPending={appState === AppState.PENDING} 
         isPlaying={isPlaying} 
-        isAwake={appState !== AppState.SLEEPING} 
+        isAwake={appState !== 'sdsd' as any} 
       />
     </div>
   )
