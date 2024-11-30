@@ -98,14 +98,11 @@ export default function ChatPage() {
       setIntensity(intensity * 3);
     },
     onSpeechStart: () => {
-      if (appState !== AppState.LISTENING) return;
-      
+      if (appState !== AppState.LISTENING) return;  
       // Сбрасываем таймер засыпания
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-          setAppState(AppState.SLEEPING);
-        }, SLEEP_TIMEOUT);
+      
       }
       
       // Устанавливаем таймер максимальной длительности речи
