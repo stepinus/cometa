@@ -28,7 +28,7 @@ interface VADState {
 }
 
 const MAX_SPEECH = 10000; // 10 seconds
-const SLEEP_TIMEOUT = 10000; // 10 seconds
+const SLEEP_TIMEOUT = 12000; // 10 seconds
 const LISTENING_TIMEOUT = 8000; // 8 seconds
 
 export default function ChatPage() {
