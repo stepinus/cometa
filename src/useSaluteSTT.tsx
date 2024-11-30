@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useStore } from './store';
 import { OggOpusDecoderWebWorker } from 'ogg-opus-decoder';
+import { getEnvVar } from './utils/env';
 
 interface SaluteSTTOptions {
   authorizationKey: string;
@@ -85,7 +86,7 @@ const useSaluteSTT = () => {
       const response = await fetch('/salute', {
         method: 'POST',
         headers: {
-          'Authorization': `Basic ${import.meta.env.VITE_APP_SALUTE}`,
+          'Authorization': `Basic ${getEnvVar('VITE_APP_SALUTE')}`,
           'RqUID': rqUid,
           'Content-Type': 'application/x-www-form-urlencoded'
         },

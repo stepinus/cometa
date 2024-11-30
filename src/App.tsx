@@ -28,7 +28,7 @@ interface VADState {
 }
 
 const MAX_SPEECH = 10000; // 10 seconds
-const SLEEP_TIMEOUT = 6000; // 10 seconds
+const SLEEP_TIMEOUT = 8000; // 10 seconds
 const LISTENING_TIMEOUT = 8000; // 8 seconds
 
 export default function ChatPage() {
@@ -64,6 +64,9 @@ export default function ChatPage() {
       case AppState.LISTENING:
         setStatus(true);
         start();
+        if(timeoutRef.current){
+          clearTimeout(timeoutRef.current);
+        }      
         // Start timeout to go back to sleep if no speech detected
         timeoutRef.current = setTimeout(() => {
           if (appState === AppState.LISTENING) {
@@ -96,7 +99,14 @@ export default function ChatPage() {
     },
     onSpeechStart: () => {
       if (appState !== AppState.LISTENING) return;
-      clearTimeouts();
+      
+      // Сбрасываем таймер засыпания
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+          setAppState(AppState.SLEEPING);
+        }, SLEEP_TIMEOUT);
+      }
       
       // Устанавливаем таймер максимальной длительности речи
       maxSpeechTimeoutRef.current = setTimeout(() => {
@@ -112,7 +122,6 @@ export default function ChatPage() {
     },
     onSpeechEnd: async (frame) => {
       if (appState !== AppState.LISTENING) return;
-      
       // Очищаем таймер максимальной длительности речи
       if (maxSpeechTimeoutRef.current) {
         clearTimeout(maxSpeechTimeoutRef.current);

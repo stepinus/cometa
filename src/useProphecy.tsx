@@ -3,9 +3,9 @@ import { initialMessage, makeProphecyMessage, makeProphecyPrompt } from './proph
 import { generateObject, generateText } from "ai"
 import {createOpenAI } from "@ai-sdk/openai"
 import { z } from 'zod';
-const gpt4o = import.meta.env.VITE_APP_MODEL;
+import { getEnvVar } from './utils/env';
 
-
+const gpt4o = getEnvVar('VITE_APP_MODEL');
 
 const intelligentCollectionSchema =  z.object({
       response: z.string().nullish(),
@@ -20,80 +20,11 @@ type ProphecyStage = 'introduction' | 'prophecy' ;
 
 const openai = createOpenAI({
     compatibility: 'strict', // strict mode, enable when using the OpenAI API
-    baseURL: import.meta.env.VITE_APP_OPENAI_API_BASE,
-    apiKey:import.meta.env.VITE_APP_OPENAI_API_KEY,
+    baseURL: getEnvVar('VITE_APP_OPENAI_API_BASE'),
+    apiKey:getEnvVar('VITE_APP_OPENAI_API_KEY'),
   });
 
 
- const userSignIn = async (email: string, password: string) => {
-	let error = null;
-	const res = await fetch(`https://webui.stepinus.store/api/v1/auths/signin`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({
-			email: email,
-			password: password
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-const getInfoCompletion = async (token, prompt1) =>{
-    try {
-      const response = await fetch('https://webui.stepinus.store/api/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token} `// Если требуется авторизация
-        },
-        body: JSON.stringify({
-          "model": "kameta",
-          "files": [
-            {"type": "collection", "id": "e9bb839f-5949-445f-9156-ff4ec8799688"}
-          ],
-          "temperature": 0,
-          "messages": [
-            {
-              "role": "user",
-              "content": `${prompt1}`,
-            }
-          ]
-        })
-      });
-  
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-  
-      const data = await response.json();
-      // Предполагаем, что ответ содержит поле data с ответом
-      return data.choices[0].message.content;
-    } catch (error) {
-      console.error('Error fetching designer info:', error);
-      throw error;
-    }
-  
-}
-const getInfo = async (userName) =>{
- const {token} = await userSignIn('stepinus@gmail.com', 'leshiy##1') 
-const info = await getInfoCompletion(token, userName)
-return info;
-}
 export function useProphecyGenerator(){
     const [maxCount, setMaxCount] = useState<number>(6)
     const [stage, setStage] = useState<ProphecyStage>('introduction');
@@ -145,7 +76,7 @@ const processUserInput = useCallback(async (input)=>{
     setCount(prev=>prev-1);
 
       if(result.object.name && !pendingInfo && !userName){
-        setPendingInfo(getInfo(result.object.name));
+        // setPendingInfo(getInfo(result.object.name));
         setUserName(result.object.name)
         if(count < 2) setCount(2);
       }
@@ -160,7 +91,7 @@ const processUserInput = useCallback(async (input)=>{
       if(result.object.command === 'change_name'){
         if(result.object.name){
           setUserName(result.object.name as string)
-          setPendingInfo(getInfo(result.object.name));
+          // setPendingInfo(getInfo(result.object.name));
         }
       }
       if(result.object.command?.includes('max_questions')){
