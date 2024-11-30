@@ -31,7 +31,7 @@ export const StatusMessage: React.FC<StatusMessageProps> = ({ isPending, isPlayi
   return (
     <div className="fixed top-[5%] left-0 right-0 z-50 flex justify-center pointer-events-none">
       <div className={`
-        px-6 py-3 rounded-2xl text-2xl text-center transition-all duration-500 ease-in-out
+        px-6 py-3 rounded-2xl text-8xl text-center transition-all duration-500 ease-in-out
         ${isVisible && !isPlaying
           ? 'opacity-100 scale-100 animate-pulse' 
           : 'opacity-0 scale-50'
