@@ -12,7 +12,7 @@ import { useProphecyGenerator } from './useProphecy';
 import  useSaluteSTT  from './useSaluteSTT';
 
 enum AppState {
-  SLEEPING = 'LISTENING',
+  SLEEPING = 'SLEEPING',
   LISTENING = 'LISTENING',
   PENDING = 'PENDING',
   SPEAKING = 'SPEAKING'
@@ -36,7 +36,7 @@ export default function ChatPage() {
   const setIntensity = useStore((state) => state.setIntensity);
   const status = useStore((state) => state.status);
   const [text, setText] = useState<string>("");
-  const [appState, setAppState] = useState<AppState>(AppState.LISTENING);
+  const [appState, setAppState] = useState<AppState>(AppState.SLEEPING);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxSpeechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,9 +58,8 @@ export default function ChatPage() {
     
     switch (newState) {
       case AppState.SLEEPING:
-        // Temporarily redirect to LISTENING instead of SLEEPING
-        setStatus(true);
-        start();
+        setStatus(false);
+        pause();
         break;
       case AppState.LISTENING:
         setStatus(true);
@@ -88,7 +87,7 @@ export default function ChatPage() {
   const {listening, userSpeaking, pause, start} = useMicVAD({
     startOnLoad: true,
     onFrameProcessed(probabilities, audioData) {
-      if (appState === AppState.PENDING || appState === AppState.SPEAKING) return;
+      if (appState === AppState.SLEEPING || appState === AppState.PENDING || appState === AppState.SPEAKING) return;
       
       const intensity = Math.sqrt(
         audioData.reduce((sum, value) => sum + value * value, 0) / audioData.length
@@ -214,7 +213,7 @@ export default function ChatPage() {
       <StatusMessage 
         isPending={appState === AppState.PENDING} 
         isPlaying={isPlaying} 
-        isAwake={appState !== 'sdsd' as any} 
+        isAwake={appState !== AppState.SLEEPING} 
       />
     </div>
   )
